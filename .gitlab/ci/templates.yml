@@ -1,0 +1,13 @@
+---
+# GitLab CI/CD — Reusable job templates
+
+# All Docker-in-Docker jobs: requires Runner 13 (tags: containers) which has Docker socket
+.docker-job:
+  image: docker:latest
+  services: []
+  variables:
+    DOCKER_HOST: "unix:///var/run/docker.sock"
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
+  tags:
+    - containers

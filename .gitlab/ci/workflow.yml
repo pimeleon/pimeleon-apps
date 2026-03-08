@@ -1,0 +1,35 @@
+---
+# GitLab CI/CD — Workflow, stages, and global variables
+
+stages:
+  - .pre
+  - check
+  - build
+  - publish
+
+variables:
+  APT_PROXY: "192.168.76.5:3142"
+  BUILD_IMAGE_ARMHF: "${CI_REGISTRY_IMAGE}/builder-armhf:latest"
+  BUILD_IMAGE_ARM64: "${CI_REGISTRY_IMAGE}/builder-arm64:latest"
+  PACKAGES_REGISTRY_URL: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic"
+  DOCKER_BUILDKIT: "1"
+  GIT_DEPTH: 0
+
+default:
+  retry:
+    max: 1
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+  interruptible: true
+
+workflow:
+  rules:
+    # Scheduled: version check only
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    # Push to main: lint + build (changes-gated) + publish
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    # Web-triggered: full pipeline, optional PACKAGE filter
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    # MRs: lint only
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'

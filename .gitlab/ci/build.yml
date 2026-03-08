@@ -1,0 +1,141 @@
+---
+# GitLab CI/CD — Package build jobs
+# Each job is triggered only when its versions/*.version file changes.
+# All jobs use the docker create + cp + start pattern (no -v mounts in CI).
+
+# Hidden template shared by all package build jobs
+.build-package:
+  extends: .docker-job
+  stage: build
+  tags:
+    - heavy
+  script:
+    - VERSION=$(cat "versions/${PACKAGE_NAME}-${TARGET_ARCH}.version")
+    - mkdir -p output
+    - |
+      CONTAINER_ID=$(docker create \
+        -e PACKAGE_NAME="${PACKAGE_NAME}" \
+        -e PACKAGE_VERSION="${VERSION}" \
+        -e TARGET_ARCH="${TARGET_ARCH}" \
+        -e APT_CACHE_SERVER="${APT_PROXY%:*}" \
+        -e APT_CACHE_PORT="${APT_PROXY##*:}" \
+        -e OUTPUT_DIR=/output \
+        "${BUILD_IMAGE}")
+      docker cp "packages/${PACKAGE_NAME}/." "${CONTAINER_ID}:/package/"
+      docker cp scripts/. "${CONTAINER_ID}:/scripts/"
+      docker start -a "${CONTAINER_ID}"
+      EXIT_CODE=$(docker inspect "${CONTAINER_ID}" --format='{{.State.ExitCode}}')
+      docker cp "${CONTAINER_ID}:/output/." output/ || true
+      docker rm "${CONTAINER_ID}"
+      [ "${EXIT_CODE}" -eq 0 ] || exit 1
+  artifacts:
+    paths:
+      - output/*.tar.gz
+      - output/*.sha256
+    expire_in: 2 weeks
+
+# ── Container builds ──────────────────────────────────────────────────────────
+
+build:containers:armhf:
+  extends: .docker-job
+  stage: .pre
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - containers/builder-armhf/**/*
+        - .gitlab/ci/build.yml
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: always
+    - when: never
+  script:
+    - docker build
+        --cache-from "${BUILD_IMAGE_ARMHF}"
+        --build-arg "APT_CACHE_SERVER=${APT_PROXY%:*}"
+        --build-arg "APT_CACHE_PORT=${APT_PROXY##*:}"
+        -t "${BUILD_IMAGE_ARMHF}"
+        -f containers/builder-armhf/Dockerfile .
+    - docker push --quiet "${BUILD_IMAGE_ARMHF}"
+
+build:containers:arm64:
+  extends: .docker-job
+  stage: .pre
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - containers/builder-arm64/**/*
+        - .gitlab/ci/build.yml
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: always
+    - when: never
+  script:
+    - docker build
+        --cache-from "${BUILD_IMAGE_ARM64}"
+        --build-arg "APT_CACHE_SERVER=${APT_PROXY%:*}"
+        --build-arg "APT_CACHE_PORT=${APT_PROXY##*:}"
+        -t "${BUILD_IMAGE_ARM64}"
+        -f containers/builder-arm64/Dockerfile .
+    - docker push --quiet "${BUILD_IMAGE_ARM64}"
+
+# ── dnscrypt-proxy ────────────────────────────────────────────────────────────
+
+build:dnscrypt-proxy:armhf:
+  extends: .build-package
+  variables:
+    PACKAGE_NAME: dnscrypt-proxy
+    TARGET_ARCH: armhf
+    BUILD_IMAGE: "${BUILD_IMAGE_ARMHF}"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - versions/dnscrypt-proxy-armhf.version
+        - packages/dnscrypt-proxy/**/*
+    - if: '$CI_PIPELINE_SOURCE == "web" && ($PACKAGE == "" || $PACKAGE == "dnscrypt-proxy")'
+      when: always
+    - when: never
+
+build:dnscrypt-proxy:arm64:
+  extends: .build-package
+  variables:
+    PACKAGE_NAME: dnscrypt-proxy
+    TARGET_ARCH: arm64
+    BUILD_IMAGE: "${BUILD_IMAGE_ARM64}"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - versions/dnscrypt-proxy-arm64.version
+        - packages/dnscrypt-proxy/**/*
+    - if: '$CI_PIPELINE_SOURCE == "web" && ($PACKAGE == "" || $PACKAGE == "dnscrypt-proxy")'
+      when: always
+    - when: never
+
+# ── tor ───────────────────────────────────────────────────────────────────────
+
+build:tor:armhf:
+  extends: .build-package
+  variables:
+    PACKAGE_NAME: tor
+    TARGET_ARCH: armhf
+    BUILD_IMAGE: "${BUILD_IMAGE_ARMHF}"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - versions/tor-armhf.version
+        - packages/tor/**/*
+    - if: '$CI_PIPELINE_SOURCE == "web" && ($PACKAGE == "" || $PACKAGE == "tor")'
+      when: always
+    - when: never
+
+build:tor:arm64:
+  extends: .build-package
+  variables:
+    PACKAGE_NAME: tor
+    TARGET_ARCH: arm64
+    BUILD_IMAGE: "${BUILD_IMAGE_ARM64}"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - versions/tor-arm64.version
+        - packages/tor/**/*
+    - if: '$CI_PIPELINE_SOURCE == "web" && ($PACKAGE == "" || $PACKAGE == "tor")'
+      when: always
+    - when: never

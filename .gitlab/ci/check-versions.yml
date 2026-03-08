@@ -1,0 +1,59 @@
+---
+# GitLab CI/CD — Upstream version detection
+# Runs on schedule only. Detects new upstream releases and commits updated
+# versions/*.version files to trigger package rebuild pipelines.
+
+check:upstream-versions:
+  stage: check
+  image: alpine:latest
+  tags:
+    - linux
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+  script:
+    - apk add --no-cache curl git python3 bash
+    - git config user.email "ci-version-bot@pirouter.dev"
+    - git config user.name "CI Version Bot"
+    - git remote set-url origin
+        "https://oauth2:${CI_PIMELEON_APPS_PUSH_TOKEN}@gitlab.pirouter.dev/pimeleon/pi-router-apps.git"
+    - |
+      CHANGED=0
+      for pkg_dir in packages/*/; do
+        [ -f "${pkg_dir}/package.env" ] || continue
+        # shellcheck source=/dev/null
+        source "${pkg_dir}/package.env"
+
+        LATEST=$(bash scripts/check-upstream.sh \
+            "${UPSTREAM_REPO}" \
+            "${UPSTREAM_TYPE}" \
+            "${UPSTREAM_GITLAB_HOST:-gitlab.com}" \
+            "${UPSTREAM_TAG_PREFIX:-}" \
+            "${UPSTREAM_TAG_PATTERN:-}" 2>/dev/null || true)
+
+        if [ -z "${LATEST}" ]; then
+          echo "[WARN] Could not determine upstream version for ${PACKAGE_NAME}, skipping"
+          continue
+        fi
+
+        for arch in ${SUPPORTED_ARCHES}; do
+          VERSION_FILE="versions/${PACKAGE_NAME}-${arch}.version"
+          CURRENT=$(cat "${VERSION_FILE}" 2>/dev/null || echo "none")
+          if [ "${LATEST}" != "${CURRENT}" ]; then
+            echo "Update: ${PACKAGE_NAME} ${arch}: ${CURRENT} -> ${LATEST}"
+            echo "${LATEST}" > "${VERSION_FILE}"
+            git add "${VERSION_FILE}"
+            CHANGED=1
+          else
+            echo "Up to date: ${PACKAGE_NAME} ${arch} @ ${LATEST}"
+          fi
+        done
+      done
+
+      if [ "${CHANGED}" = "1" ]; then
+        git commit -m "chore(versions): update upstream package versions"
+        git push origin HEAD:main
+        echo "Pushed version updates — downstream pipeline will build affected packages"
+      else
+        echo "All packages up to date, no changes committed"
+      fi

@@ -1,0 +1,10 @@
+---
+# pi-router-apps — GitLab CI/CD entry point
+
+include:
+  - local: '.gitlab/ci/workflow.yml'
+  - local: '.gitlab/ci/templates.yml'
+  - local: '.gitlab/ci/lint.yml'
+  - local: '.gitlab/ci/check-versions.yml'
+  - local: '.gitlab/ci/build.yml'
+  - local: '.gitlab/ci/publish.yml'

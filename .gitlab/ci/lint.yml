@@ -1,0 +1,12 @@
+---
+# GitLab CI/CD — Linting
+
+lint:shell:
+  stage: .pre
+  image: koalaman/shellcheck-alpine:stable
+  tags:
+    - linux
+  rules:
+    - if: '$CI_PIPELINE_SOURCE != "schedule"'
+  script:
+    - find scripts packages -name "*.sh" -exec shellcheck --severity=warning {} +

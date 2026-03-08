@@ -48,4 +48,4 @@ ENV CC=aarch64-linux-gnu-gcc
 
 RUN mkdir -p /package /scripts /output
 
-CMD ["/scripts/build-package.sh"]
+CMD ["bash", "/scripts/build-package.sh"]

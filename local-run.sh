@@ -66,7 +66,7 @@ else
     fi
     log_info "Output files:"
     ls -lh "${OUTPUT_DIR}/${PACKAGE}"* 2>/dev/null || log_warn "No output files found"
-    return 0
+    exit 0
 fi
 
 docker rm "${CONTAINER_ID}" 2>/dev/null || true

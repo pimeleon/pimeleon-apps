@@ -8,9 +8,16 @@ set -euo pipefail
 source "$(dirname "$0")/scripts/common.sh"
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
-ARCH="${1:-all}"
+ARCH="all"
 NO_CACHE=""
-[[ "${2:-}" == "--no-cache" ]] && NO_CACHE="--no-cache"
+
+for arg in "$@"; do
+    case "${arg}" in
+        --no-cache) NO_CACHE="--no-cache" ;;
+        armhf|arm64|all) ARCH="${arg}" ;;
+        *) die "Unknown argument: ${arg}. Usage: local-build.sh [armhf|arm64|all] [--no-cache]" ;;
+    esac
+done
 
 APT_CACHE_SERVER="192.168.76.5"
 APT_CACHE_PORT="3142"

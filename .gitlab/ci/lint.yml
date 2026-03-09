@@ -2,7 +2,7 @@
 # GitLab CI/CD — Linting
 
 lint:shell:
-  stage: .pre
+  stage: lint
   image: koalaman/shellcheck-alpine:stable
   tags:
     - linux

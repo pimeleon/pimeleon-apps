@@ -31,6 +31,7 @@ RUN apt-get update && apt-get install -yq --no-install-recommends \
     ca-certificates \
     coreutils \
     util-linux \
+    xxd \
     libcap2-bin \
     libcap-dev:armhf \
     curl \
@@ -38,6 +39,7 @@ RUN apt-get update && apt-get install -yq --no-install-recommends \
     git \
     pkg-config \
     python3 \
+    python3-jinja2 \
     autoconf \
     automake \
     libtool \

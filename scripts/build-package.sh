@@ -40,6 +40,7 @@ IMAGE="pimeleon-builder-${TARGET_ARCH}:latest"
 CONTAINER_ID=$(docker create \
     --privileged \
     -v /dev:/dev:rw \
+    -v /tmp/pimeleon-build:/tmp/pimeleon-build \
     -e PACKAGE_NAME="${PKG_NAME}" \
     -e PACKAGE_VERSION="${PKG_VERSION}" \
     -e TARGET_ARCH="${TARGET_ARCH}" \

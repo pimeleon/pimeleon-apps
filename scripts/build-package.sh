@@ -5,7 +5,8 @@ set -euo pipefail
 set -E
 
 # Source common functions
-source "$(dirname "$0")/common.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; source "${SCRIPT_DIR}/common.sh"
+echo "[INFO] Orchestrator started..."
 
 # Default variables
 export SOURCES="${SOURCES:-github}"
@@ -34,7 +35,7 @@ PKG_VERSION="${2:-latest}"
 
 log_section "Building ${PKG_NAME} (${PKG_VERSION}) [Arch: ${TARGET_ARCH}, Source: ${SOURCES}]"
 
-# 1. Prepare Container
+# 1. Prepare Container (Command MUST be specified at creation)
 IMAGE="pimeleon-builder-${TARGET_ARCH}:latest"
 CONTAINER_ID=$(docker create \
     --privileged \
@@ -44,23 +45,19 @@ CONTAINER_ID=$(docker create \
     -e TARGET_ARCH="${TARGET_ARCH}" \
     -e OUTPUT_DIR="${OUTPUT_DIR}" \
     -e PIMELEON_PROFILE="${PIMELEON_PROFILE}" \
-    "${IMAGE}")
+    "${IMAGE}" /scripts/container-build.sh "${PKG_NAME}" "${PKG_VERSION}")
 
 # 2. Inject Code
-if [[ "${SOURCES}" == "local" ]]; then
-    log_info "Injecting LOCAL sources from packages/${PKG_NAME}"
-    docker cp "packages/${PKG_NAME}/." "${CONTAINER_ID}:/package/"
-else
-    log_info "Injecting REMOTE sources logic"
-    docker cp "packages/${PKG_NAME}/." "${CONTAINER_ID}:/package/"
-fi
-
-# Inject shared scripts and common libs
+log_info "Injecting scripts and package source..."
+# Inject scripts directory (containing common.sh and container-build.sh)
 docker cp scripts/. "${CONTAINER_ID}:/scripts/"
+# Inject package-specific build script and environment
+docker cp "packages/${PKG_NAME}/." "${CONTAINER_ID}:/package/"
 
-# 3. Execute Build
-docker start -a "${CONTAINER_ID}" /scripts/container-build.sh "${PKG_NAME}" "${PKG_VERSION}"
+# 3. Execute Build (Start and Attach)
+docker start -a "${CONTAINER_ID}"
 
 # 4. Extract Results
+log_info "Extracting results..."
 mkdir -p output
 docker cp "${CONTAINER_ID}:${OUTPUT_DIR}/." output/

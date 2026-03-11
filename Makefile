@@ -1,4 +1,8 @@
-.PHONY: help build build-tor build-dnscrypt build-all clean lint build-builder
+.PHONY: help build compile compile-all compile-tor compile-dns compile-hostapd compile-pihole clean lint factory-init refresh-tools tor dns dnscrypt-proxy hostapd pihole-ftl pihole pi-hole
+
+# Use bash for all recipes and run in a single shell per target
+SHELL := /bin/bash
+.ONESHELL:
 
 # Default settings
 TARGET_ARCH ?= armhf
@@ -8,6 +12,9 @@ APT_PROXY ?=
 # Get the current directory for absolute paths in traps
 PROJECT_ROOT = $(CURDIR)
 
+# Export all variables to subshells
+export TARGET_ARCH SOURCES APT_PROXY
+
 # Parse proxy variables for docker build
 ifneq ($(APT_PROXY),)
     CACHE_SERVER = $(shell echo $(APT_PROXY) | cut -d: -f1)
@@ -15,41 +22,69 @@ ifneq ($(APT_PROXY),)
     PROXY_ARGS = --build-arg APT_CACHE_SERVER=$(CACHE_SERVER) --build-arg APT_CACHE_PORT=$(if $(CACHE_PORT),$(CACHE_PORT),3142)
 endif
 
+export PROXY_ARGS
+
 help:
 	@echo "Pimeleon App Factory"
 	@echo "====================="
 	@echo "targets:"
-	@echo "  make build          - Build all apps for $(TARGET_ARCH)"
-	@echo "  make build-tor      - Build Tor binary"
-	@echo "  make build-dnscrypt - Build DNSCrypt-Proxy binary"
-	@echo "  make build-builder  - Forcibly rebuild builder image"
+	@echo "  make compile        - Compile all apps for $(TARGET_ARCH)"
+	@echo "  make tor            - Compile Tor binary"
+	@echo "  make dnscrypt-proxy - Compile DNSCrypt-Proxy binary"
+	@echo "  make hostapd        - Compile Hostapd binary"
+	@echo "  make pihole-ftl     - Compile Pi-hole FTL binary"
+	@echo "  make factory-init   - Prepare/Force-rebuild builder environment"
+	@echo "  make refresh-tools  - Download/cache build tools locally"
 	@echo "  make clean          - Clear local build artifacts"
 
-build: build-all
+build: compile
+compile: compile-all
 
-# Builder image is ALWAYS rebuilt with --no-cache to ensure fresh environment/proxy
-# Wrapped in a robust trap to ensure graceful termination
-update-tools:
-	@./scripts/update-tools.sh
+# Intuitive Aliases
+tor: compile-tor
+dns: compile-dns
+dnscrypt-proxy: compile-dns
+hostapd: compile-hostapd
+pihole-ftl: compile-pihole
+pihole: compile-pihole
+pi-hole: compile-pihole
 
-build-builder:
-	@echo "Building pimeleon-builder-$(TARGET_ARCH) image (forced rebuild)..."
-	@/bin/bash -c 'trap "$(PROJECT_ROOT)/scripts/clean-docker.sh --clean-mounts; exit 1" INT TERM; \
-		docker build --no-cache $(PROXY_ARGS) -t pimeleon-builder-$(TARGET_ARCH):latest \
-			-f containers/builder-$(TARGET_ARCH)/Dockerfile .'
+# Builder environment setup (ALWAYS rebuilt with --no-cache)
+factory-init: refresh-tools
+	@echo "Initializing pimeleon-factory-$(TARGET_ARCH) environment..."
+	@echo "Proxy settings: $(if $(PROXY_ARGS),$(PROXY_ARGS),none)"
+	@trap "$(PROJECT_ROOT)/scripts/clean-docker.sh --clean-mounts; exit 1" INT TERM
+	docker build --no-cache $(PROXY_ARGS) -t pimeleon-builder-$(TARGET_ARCH):latest \
+		-f containers/builder-$(TARGET_ARCH)/Dockerfile .
 
-build-tor: build-builder
-	@/bin/bash -c 'trap "$(PROJECT_ROOT)/scripts/clean-docker.sh --clean-mounts; exit 1" INT TERM; \
-		TARGET_ARCH=$(TARGET_ARCH) SOURCES=$(SOURCES) APT_PROXY=$(APT_PROXY) ./scripts/build-package.sh tor'
+compile-tor:
+	@echo "==> Building tor (latest) [Arch: $(TARGET_ARCH), Source: $(SOURCES)]"
+	@trap "$(PROJECT_ROOT)/scripts/clean-docker.sh --clean-mounts; exit 1" INT TERM
+	./scripts/build-package.sh tor
 
-build-dnscrypt: build-builder
-	@/bin/bash -c 'trap "$(PROJECT_ROOT)/scripts/clean-docker.sh --clean-mounts; exit 1" INT TERM; \
-		TARGET_ARCH=$(TARGET_ARCH) SOURCES=$(SOURCES) APT_PROXY=$(APT_PROXY) ./scripts/build-package.sh dnscrypt-proxy'
+compile-dns:
+	@echo "==> Building dnscrypt-proxy (latest) [Arch: $(TARGET_ARCH), Source: $(SOURCES)]"
+	@trap "$(PROJECT_ROOT)/scripts/clean-docker.sh --clean-mounts; exit 1" INT TERM
+	./scripts/build-package.sh dnscrypt-proxy
 
-build-all: build-tor build-dnscrypt
+compile-hostapd:
+	@echo "==> Building hostapd (latest) [Arch: $(TARGET_ARCH), Source: $(SOURCES)]"
+	@trap "$(PROJECT_ROOT)/scripts/clean-docker.sh --clean-mounts; exit 1" INT TERM
+	./scripts/build-package.sh hostapd
+
+compile-pihole:
+	@echo "==> Building pihole-ftl (latest) [Arch: $(TARGET_ARCH), Source: $(SOURCES)]"
+	@trap "$(PROJECT_ROOT)/scripts/clean-docker.sh --clean-mounts; exit 1" INT TERM
+	./scripts/build-package.sh pihole-FTL
+
+compile-all: compile-tor compile-dns compile-hostapd compile-pihole
 
 clean:
 	rm -rf output/*.tar.gz output/*.sha256
 
 lint:
 	./scripts/quality-benchmark.sh
+
+# Download and cache required build tools
+refresh-tools:
+	@./scripts/update-tools.sh

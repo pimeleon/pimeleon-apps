@@ -4,7 +4,7 @@ set -euo pipefail
 
 CACHE_DIR="${CACHE_DIR:-cache}"
 TOOLS_FILE="versions/tools.yml"
-mkdir -p "${CACHE_DIR}/tools"
+sudo mkdir -p "${CACHE_DIR}/tools"
 
 # Get Go version
 GO_VER=$(grep "go:" "$TOOLS_FILE" | awk '{print $2}' | tr -d '"' | tr -d "'")
@@ -23,8 +23,9 @@ fi
 # Attempt Registry Download (if in CI)
 if [[ -n "${CI_JOB_TOKEN:-}" ]]; then
     echo "[INFO] Attempting to fetch Go from local GitLab registry..."
-    if curl -fsSL -k -H "JOB-TOKEN: ${CI_JOB_TOKEN}" -o "$LOCAL_PATH" "$REGISTRY_URL"; then
+    if sudo curl -fsSL -k -H "JOB-TOKEN: ${CI_JOB_TOKEN}" -o "$LOCAL_PATH" "$REGISTRY_URL"; then
         echo "[SUCCESS] Go ${GO_VER} fetched from registry."
+        sudo chown "$(id -u):$(id -g)" "$LOCAL_PATH" 2>/dev/null || true
         exit 0
     fi
 fi
@@ -32,7 +33,8 @@ fi
 # Fallback to Upstream
 echo "[WARN] Go not found in registry. Downloading from upstream go.dev..."
 GO_URL="https://go.dev/dl/${GO_TARBALL}"
-curl -fsSL -o "$LOCAL_PATH" "$GO_URL"
+sudo curl -fsSL -o "$LOCAL_PATH" "$GO_URL"
+sudo chown "$(id -u):$(id -g)" "$LOCAL_PATH" 2>/dev/null || true
 
 # Upload back to registry if in CI (to seed it for next time)
 if [[ -n "${CI_JOB_TOKEN:-}" ]]; then

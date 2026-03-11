@@ -1,13 +1,20 @@
 #!/bin/bash
 # Common functions for Pimeleon build scripts
 set -E
+# Ensure a robust system path is available to all scripts
+export PATH="/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
 
 # Project name for cache keys and output naming
 PIMELEON_PROJECT_NAME="${PIMELEON_PROJECT_NAME:-pimeleon}"
 
 # Ownership configuration
-PIMELEON_USER="${PIMELEON_USER:-$(id -u)}"
+PIMELEON_USER="${PIMELEON_USER:-$(/usr/bin/id -u 2>/dev/null || echo 0)}"
 PIMELEON_GROUP="${PIMELEON_GROUP:-docker}"
+# Support APT_PROXY environment variable (e.g., 192.168.76.5:3142)
+if [[ -n "${APT_PROXY:-}" ]]; then
+    export APT_CACHE_SERVER="${APT_PROXY%:*}"
+    export APT_CACHE_PORT="${APT_PROXY##*:}"
+fi
 
 # Color codes for output
 RED='\033[0;31m'
@@ -27,6 +34,10 @@ log_warn() {
 
 log_error() {
     echo -e "${RED}[ERROR]${NC} $*"
+}
+
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $*"
 }
 
 log_section() {
@@ -225,23 +236,7 @@ sys.exit(0 if val == True else 1)
 
 # Check if the build should use the APT cache proxy and persistent caches
 should_use_apt_proxy() {
-    # If APT_CACHE_SERVER is not set, we can't use proxy
-    if [[ -z "${APT_CACHE_SERVER:-}" ]]; then
-        return 1
-    fi
-
-    # Check for CI/CD environment (always use proxy to speed up CI)
-    if [[ -n "${CI:-}" ]] || [[ -n "${GITLAB_CI:-}" ]] || [[ -n "${GITHUB_ACTIONS:-}" ]]; then
-        return 0
-    fi
-
-    # For local builds, only use proxy if explicitly requested via PIMELEON_PROFILE=development
-    # or if we are not in production mode.
-    if [[ "${PIMELEON_PROFILE:-}" != "production" ]]; then
-        return 0
-    fi
-
-    return 1
+    [[ -n "${APT_CACHE_SERVER:-}" ]]
 }
 
 # Cleanup stale mounts from previous failed builds
@@ -503,12 +498,9 @@ validate_build_environment() {
 
     # Verify network connectivity (Prioritize Cache Server, then Internet)
     local reachable=false
-    if [[ -n "${APT_CACHE_SERVER:-}" ]]; then
-        # Try to connect to the APT Cache port (TCP)
-        if timeout 1 bash -c "cat < /dev/null > /dev/tcp/${APT_CACHE_SERVER}/${APT_CACHE_PORT:-3142}" 2>/dev/null; then
-            log_info "APT Cache Server (${APT_CACHE_SERVER}) is reachable."
-            reachable=true
-        fi
+    if timeout 1 bash -c "cat < /dev/null > /dev/tcp/${APT_CACHE_SERVER}/${APT_CACHE_PORT:-3142}" 2>/dev/null; then
+        log_info "APT Cache Server (${APT_CACHE_SERVER}) is reachable."
+        reachable=true
     fi
 
     if [[ "$reachable" == "false" ]]; then
@@ -517,12 +509,6 @@ validate_build_environment() {
            timeout 1 bash -c "cat < /dev/null > /dev/tcp/google.com/80" 2>/dev/null; then
             log_info "Internet connectivity detected."
             reachable=true
-        else
-            if [[ -n "${APT_CACHE_SERVER:-}" ]]; then
-                log_warn "Neither APT Cache Server (${APT_CACHE_SERVER}) nor Internet are reachable. Build might fail."
-            else
-                log_warn "No internet connectivity detected. Package installation might fail."
-            fi
         fi
     fi
 }
@@ -564,7 +550,6 @@ Acquire::http::Proxy "http://${APT_CACHE_SERVER}:${APT_CACHE_PORT:-3142}";
 # Longer timeouts for slow cache/upstream responses
 Acquire::http::Timeout "120";
 Acquire::https::Timeout "120";
-Acquire::Retries "3";
 EOF
     fi
 }
@@ -603,14 +588,9 @@ chroot_run() {
 
     # Construct proxy environment if available
     local -a proxy_args=()
-    if [[ -n "${APT_CACHE_SERVER:-}" ]]; then
-        local proxy_url="http://${APT_CACHE_SERVER}:${APT_CACHE_PORT:-3142}"
-        proxy_args=(
-            "http_proxy=${proxy_url}"
-            "https_proxy=${proxy_url}"
-            "ftp_proxy=${proxy_url}"
-            "no_proxy=localhost,127.0.0.1,local"
-        )
+    if timeout 1 bash -c "cat < /dev/null > /dev/tcp/${APT_CACHE_SERVER}/${APT_CACHE_PORT:-3142}" 2>/dev/null; then
+        log_info "APT Cache Server (${APT_CACHE_SERVER}) is reachable."
+        reachable=true
     fi
 
     # Use env to pass the proxy variables into the chroot environment

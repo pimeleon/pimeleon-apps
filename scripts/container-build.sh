@@ -10,10 +10,16 @@ fi
 PKG_NAME="$1"
 PKG_VERSION="${2:-latest}"
 
+# If version is latest, try to get it from package.env
+if [[ "${PKG_VERSION}" == "latest" && -f "/package/package.env" ]]; then
+    source /package/package.env
+    PKG_VERSION="${PACKAGE_VERSION:-latest}"
+fi
+
 # Execute the specific package build script
 if [[ -f "/package/build.sh" ]]; then
     log_info "Starting build for ${PKG_NAME} v${PKG_VERSION}"
-    bash /package/build.sh "${PKG_VERSION}"
+    /bin/bash /package/build.sh "${PKG_VERSION}"
 else
     die "Build script not found at /package/build.sh"
 fi

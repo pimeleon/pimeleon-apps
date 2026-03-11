@@ -40,7 +40,8 @@ RUN apt-get update && apt-get install -yq --no-install-recommends \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Go toolchain for armhf cross-compilation (dnscrypt-proxy is written in Go)
-RUN curl -fsSL https://go.dev/dl/go1.22.4.linux-amd64.tar.gz | tar xz -C /usr/local
+COPY cache/tools/go*.tar.gz /tmp/go.tar.gz
+RUN tar -C /usr/local -xzf /tmp/go.tar.gz && rm /tmp/go.tar.gz
 ENV PATH="/usr/local/go/bin:${PATH}"
 ENV GOARCH=arm
 ENV GOARM=7

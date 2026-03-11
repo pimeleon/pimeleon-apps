@@ -1,5 +1,5 @@
 ---
-# GitLab CI/CD — Hybrid Optimized Workflow
+# GitLab CI/CD — Architecture-Centric Workflow
 stages:
   - lint
   - check
@@ -7,6 +7,7 @@ stages:
 
 variables:
   GIT_DEPTH: 0
+  DEFAULT_ARCH: "armhf"
 
 workflow:
   rules:

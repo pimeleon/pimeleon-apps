@@ -19,6 +19,9 @@ check:upstream-versions:
         "https://oauth2:${CI_PIMELEON_APPS_PUSH_TOKEN}@gitlab.pirouter.dev/pimeleon/pi-router-apps.git"
     - |
       CHANGED=0
+      # Check for Go version updates
+      ./scripts/update-tools.sh
+
       for pkg_dir in packages/*/; do
         [ -f "${pkg_dir}/package.env" ] || continue
         # shellcheck source=/dev/null

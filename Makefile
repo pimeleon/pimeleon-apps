@@ -29,6 +29,9 @@ build: build-all
 
 # Builder image is ALWAYS rebuilt with --no-cache to ensure fresh environment/proxy
 # Wrapped in a robust trap to ensure graceful termination
+update-tools:
+	@./scripts/update-tools.sh
+
 build-builder:
 	@echo "Building pimeleon-builder-$(TARGET_ARCH) image (forced rebuild)..."
 	@/bin/bash -c 'trap "$(PROJECT_ROOT)/scripts/clean-docker.sh --clean-mounts; exit 1" INT TERM; \

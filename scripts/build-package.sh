@@ -35,7 +35,7 @@ PKG_VERSION="${2:-latest}"
 log_section "Building ${PKG_NAME} (${PKG_VERSION}) [Arch: ${TARGET_ARCH}, Source: ${SOURCES}]"
 
 # 1. Prepare Container
-IMAGE="ghcr.io/pimeleon/builder-${TARGET_ARCH}:latest"
+IMAGE="pimeleon-builder-${TARGET_ARCH}:latest"
 CONTAINER_ID=$(docker create \
     --privileged \
     -v /dev:/dev:rw \
@@ -59,7 +59,7 @@ fi
 docker cp scripts/. "${CONTAINER_ID}:/scripts/"
 
 # 3. Execute Build
-docker start -a "${CONTAINER_ID}"
+docker start -a "${CONTAINER_ID}" /scripts/container-build.sh "${PKG_NAME}" "${PKG_VERSION}"
 
 # 4. Extract Results
 mkdir -p output

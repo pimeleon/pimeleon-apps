@@ -49,4 +49,4 @@ ENV CC=arm-linux-gnueabihf-gcc
 
 RUN mkdir -p /package /scripts /output
 
-CMD ["bash", "/scripts/build-package.sh"]
+CMD ["bash"]

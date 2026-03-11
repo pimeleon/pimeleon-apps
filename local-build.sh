@@ -1,48 +1,19 @@
 #!/bin/bash
-# local-build.sh — build builder Docker images locally
-# Usage: local-build.sh [armhf|arm64|all] [--no-cache]
-#
-# Builds the cross-compilation containers used by local-run.sh and CI.
-
+# Local App Builder for pi-router-apps
 set -euo pipefail
-source "$(dirname "$0")/scripts/common.sh"
 
-REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
-ARCH="all"
-NO_CACHE=""
+PACKAGE=${1:-}
+ARCH=${2:-armhf}
 
-for arg in "$@"; do
-    case "${arg}" in
-        --no-cache) NO_CACHE="--no-cache" ;;
-        armhf|arm64|all) ARCH="${arg}" ;;
-        *) die "Unknown argument: ${arg}. Usage: local-build.sh [armhf|arm64|all] [--no-cache]" ;;
-    esac
-done
+if [[ -z "$PACKAGE" ]]; then
+    echo "Usage: $0 <package_name> [arch]"
+    exit 1
+fi
 
-APT_CACHE_SERVER="192.168.76.5"
-APT_CACHE_PORT="3142"
+log_info() { echo -e "\033[0;32m[INFO]\033[0m $*"; }
 
-build_image() {
-    local arch="$1"
-    local image="pi-router-apps/builder-${arch}:local"
-    local dockerfile="${REPO_ROOT}/containers/builder-${arch}/Dockerfile"
+log_info "Building $PACKAGE for $ARCH (Local Mode)..."
+mkdir -p output
 
-    [[ -f "${dockerfile}" ]] || die "Dockerfile not found: ${dockerfile}"
-
-    log_info "Building ${image} ..."
-    docker build \
-        ${NO_CACHE} \
-        --build-arg APT_CACHE_SERVER="${APT_CACHE_SERVER}" \
-        --build-arg APT_CACHE_PORT="${APT_CACHE_PORT}" \
-        -t "${image}" \
-        -f "${dockerfile}" \
-        "${REPO_ROOT}"
-    log_info "Done: ${image}"
-}
-
-case "${ARCH}" in
-    armhf) build_image armhf ;;
-    arm64) build_image arm64 ;;
-    all)   build_image armhf; build_image arm64 ;;
-    *)     die "Unknown arch: ${ARCH}. Use: armhf | arm64 | all" ;;
-esac
+# Launch build via Docker without registry push
+TARGET_ARCH=$ARCH \nSOURCES=local \n./scripts/build-package.sh "$PACKAGE"

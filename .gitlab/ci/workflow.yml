@@ -1,28 +1,31 @@
 ---
-# GitLab CI/CD — Workflow, stages, and global variables
-
+# GitLab CI/CD — Hybrid Optimized Workflow
 stages:
   - lint
   - check
+  - build
 
 variables:
   GIT_DEPTH: 0
 
-default:
-  retry:
-    max: 1
-    when:
-      - runner_system_failure
-      - stuck_or_timeout_failure
-  interruptible: true
-
 workflow:
   rules:
-    # Scheduled: version check only
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
-    # Push to main: lint only
-    - if: '$CI_COMMIT_BRANCH == "main"'
-    # Web-triggered: lint + version check
-    - if: '$CI_PIPELINE_SOURCE == "web"'
-    # MRs: lint only
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    # 1. Feature Branches: Minimal Checks
+    - if: '$CI_COMMIT_BRANCH != "master" && $CI_COMMIT_BRANCH != "main" && $CI_PIPELINE_SOURCE == "push"'
+      variables:
+        PIPELINE_MODE: "lightweight"
+    
+    # 2. MR to Master: Full Verification
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && ($CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master" || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main")'
+      variables:
+        PIPELINE_MODE: "heavyweight"
+
+    # 3. Master Branch: Full Checks + Build
+    - if: '$CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "main"'
+      variables:
+        PIPELINE_MODE: "heavyweight"
+
+    # Web and Scheduled triggers
+    - if: '$CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "schedule"'
+      variables:
+        PIPELINE_MODE: "heavyweight"

@@ -1,68 +1,66 @@
 #!/bin/bash
-# scripts/build-package.sh — orchestrator that runs inside the builder container
-# Environment variables expected:
-#   PACKAGE_NAME    - package to build (must match a packages/ directory)
-#   PACKAGE_VERSION - version string to build
-#   TARGET_ARCH     - armhf or arm64
-#   APT_CACHE_SERVER, APT_CACHE_PORT - optional APT proxy
-
+# Pimeleon Package Builder Orchestrator (Single Environment)
+# Always builds from production sources.
 set -euo pipefail
-source /scripts/common.sh
+set -E
 
-: "${PACKAGE_NAME:?PACKAGE_NAME required}"
-: "${PACKAGE_VERSION:?PACKAGE_VERSION required}"
-: "${TARGET_ARCH:?TARGET_ARCH required}"
+# Source common functions
+source "$(dirname "$0")/common.sh"
 
-PACKAGE_DIR="/package"
-OUTPUT_DIR="/output"
+# Default variables
+export SOURCES="${SOURCES:-github}"
+export TARGET_ARCH="${TARGET_ARCH:-armhf}"
+export OUTPUT_DIR="${OUTPUT_DIR:-/output}"
+export PIMELEON_PROFILE="production" # Strictly production
 
-[[ -f "${PACKAGE_DIR}/package.env" ]] || die "Missing ${PACKAGE_DIR}/package.env"
-[[ -f "${PACKAGE_DIR}/build.sh" ]]    || die "Missing ${PACKAGE_DIR}/build.sh"
-
-# shellcheck source=/dev/null
-source "${PACKAGE_DIR}/package.env"
-
-log_info "Building ${PACKAGE_NAME} ${PACKAGE_VERSION} for ${TARGET_ARCH}"
-log_info "Build type: ${BUILD_TYPE}"
-
-mkdir -p "${OUTPUT_DIR}"
-
-# Configure cross-compilation toolchain (for source builds)
-if [[ "${BUILD_TYPE}" == "source" ]]; then
-    if [[ "${TARGET_ARCH}" == "armhf" ]]; then
-        export CROSS_TRIPLE="arm-linux-gnueabihf"
-    else
-        export CROSS_TRIPLE="aarch64-linux-gnu"
+# Cleanup handler for Docker containers
+cleanup_handler() {
+    local exit_code=$?
+    trap - EXIT ERR INT TERM PIPE
+    if [[ -n "${CONTAINER_ID:-}" ]]; then
+        log_warn "Cleaning up build container..."
+        docker rm -f "${CONTAINER_ID}" >/dev/null 2>&1 || true
     fi
-    export CC="${CROSS_TRIPLE}-gcc"
-    export CXX="${CROSS_TRIPLE}-g++"
-    export AR="${CROSS_TRIPLE}-ar"
-    export STRIP="${CROSS_TRIPLE}-strip"
-    export PKG_CONFIG_PATH="/usr/lib/${CROSS_TRIPLE}/pkgconfig:/usr/share/pkgconfig"
-    export PKG_CONFIG_LIBDIR="/usr/lib/${CROSS_TRIPLE}/pkgconfig"
-    export LDFLAGS="-L/usr/lib/${CROSS_TRIPLE}"
-    export HOST_TRIPLE="${CROSS_TRIPLE}"
+    exit $exit_code
+}
+trap "cleanup_handler" EXIT ERR INT TERM PIPE
+
+if [[ $# -lt 1 ]]; then
+    die "Usage: $0 <package_name> [version]"
 fi
 
-# Install package-specific build deps
-if [[ "${TARGET_ARCH}" == "armhf" ]] && [[ -n "${BUILD_DEPS_ARMHF:-}" ]]; then
-    log_info "Installing armhf build deps: ${BUILD_DEPS_ARMHF}"
-    # shellcheck disable=SC2086
-    apt_install ${BUILD_DEPS_ARMHF}
-elif [[ "${TARGET_ARCH}" == "arm64" ]] && [[ -n "${BUILD_DEPS_ARM64:-}" ]]; then
-    log_info "Installing arm64 build deps: ${BUILD_DEPS_ARM64}"
-    # shellcheck disable=SC2086
-    apt_install ${BUILD_DEPS_ARM64}
+PKG_NAME="$1"
+PKG_VERSION="${2:-latest}"
+
+log_section "Building ${PKG_NAME} (${PKG_VERSION}) [Arch: ${TARGET_ARCH}, Source: ${SOURCES}]"
+
+# 1. Prepare Container
+IMAGE="ghcr.io/pimeleon/builder-${TARGET_ARCH}:latest"
+CONTAINER_ID=$(docker create \
+    --privileged \
+    -v /dev:/dev:rw \
+    -e PACKAGE_NAME="${PKG_NAME}" \
+    -e PACKAGE_VERSION="${PKG_VERSION}" \
+    -e TARGET_ARCH="${TARGET_ARCH}" \
+    -e OUTPUT_DIR="${OUTPUT_DIR}" \
+    -e PIMELEON_PROFILE="${PIMELEON_PROFILE}" \
+    "${IMAGE}")
+
+# 2. Inject Code
+if [[ "${SOURCES}" == "local" ]]; then
+    log_info "Injecting LOCAL sources from packages/${PKG_NAME}"
+    docker cp "packages/${PKG_NAME}/." "${CONTAINER_ID}:/package/"
+else
+    log_info "Injecting REMOTE sources logic"
+    docker cp "packages/${PKG_NAME}/." "${CONTAINER_ID}:/package/"
 fi
 
-# Run the package-specific build script
-bash "${PACKAGE_DIR}/build.sh"
+# Inject shared scripts and common libs
+docker cp scripts/. "${CONTAINER_ID}:/scripts/"
 
-# Verify output was produced
-OUTPUT_ARCHIVE="${OUTPUT_DIR}/${PACKAGE_NAME}-${PACKAGE_VERSION}-${TARGET_ARCH}-pimeleon.tar.gz"
-[[ -f "${OUTPUT_ARCHIVE}" ]] || die "Build script did not produce ${OUTPUT_ARCHIVE}"
+# 3. Execute Build
+docker start -a "${CONTAINER_ID}"
 
-# Generate checksum
-sha256sum "${OUTPUT_ARCHIVE}" > "${OUTPUT_ARCHIVE}.sha256"
-log_info "Done: ${OUTPUT_ARCHIVE}"
-ls -lh "${OUTPUT_DIR}/"
+# 4. Extract Results
+mkdir -p output
+docker cp "${CONTAINER_ID}:${OUTPUT_DIR}/." output/

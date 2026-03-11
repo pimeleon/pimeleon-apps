@@ -1,1 +1,6 @@
 output/
+*.tar.gz
+*.tar
+*.gz
+*.gzip
+*.zip

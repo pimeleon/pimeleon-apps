@@ -48,21 +48,7 @@ case "${TYPE}" in
             "https://${UPSTREAM_GITLAB_HOST}/api/v4/projects/${encoded}/repository/tags?order_by=version&per_page=5") \
             || exit 0
         # Pick first tag matching prefix and optional stable pattern
-        tag=$(echo "$raw" | python3 -c "
-import json, sys, re
-data = json.load(sys.stdin)
-prefix = '${TAG_PREFIX}'
-pattern = '${TAG_PATTERN}'
-for t in data:
-    name = t.get('name', '')
-    if prefix and not name.startswith(prefix):
-        continue
-    stripped = name[len(prefix):]
-    if pattern and not re.match(pattern, stripped):
-        continue
-    print(name)
-    break
-" 2>/dev/null)
+        tag=$(echo "$raw" | python3 -c "import json, sys, re; data = json.load(sys.stdin); prefix = '${TAG_PREFIX}'; pattern = '${TAG_PATTERN}'; print(next((t.get('name', '') for t in data if (not prefix or t.get('name', '').startswith(prefix)) and (not pattern or re.match(pattern, t.get('name', '')[len(prefix):]))), ''))" 2>/dev/null)
         echo "${tag#"${TAG_PREFIX}"}"
         ;;
     *)

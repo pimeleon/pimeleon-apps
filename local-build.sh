@@ -79,4 +79,3 @@ if [[ "$PACKAGE" == "all" ]]; then
 else
     build_single_package "$PACKAGE" "$ARCH"
 fi
-

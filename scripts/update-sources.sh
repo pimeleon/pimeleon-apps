@@ -50,12 +50,12 @@ download_and_cache_tarball() {
 process_package() {
     local pkg_dir="$1"
     [ -f "${pkg_dir}/package.env" ] || return 0
-    
+
     # Clean env for each package
     (
         # shellcheck source=/dev/null
         source "${pkg_dir}/package.env"
-        
+
         # Determine latest version from upstream
         log_info "Checking upstream for ${PACKAGE_NAME}..."
         local latest_version

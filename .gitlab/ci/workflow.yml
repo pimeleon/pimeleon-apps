@@ -1,6 +1,7 @@
 ---
 # GitLab CI/CD — Architecture-Centric Workflow
 stages:
+  - security
   - lint
   - check
   - build

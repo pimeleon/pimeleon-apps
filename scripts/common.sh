@@ -808,7 +808,7 @@ fetch_source() {
     if [[ -n "${token}" ]]; then
         local registry_url="${reg}/${pkg_name}/${version}/${tarball_name}"
         log_info "Attempting to fetch ${pkg_name} ${version} source from registry..."
-        
+
         # Determine header based on token type
         local auth_header="JOB-TOKEN: ${token}"
         if [[ -z "${CI_JOB_TOKEN:-}" ]]; then

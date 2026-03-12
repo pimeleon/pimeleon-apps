@@ -11,7 +11,7 @@ for pkg in output/*-pimeleon.tar.gz; do
     # Parse name and version
     APP_NAME=$(echo "$BASENAME" | cut -d"-" -f1)
     VERSION=$(echo "$BASENAME" | cut -d"-" -f2)
-    
+
     log_info "Uploading ${APP_NAME} v${VERSION} to project ${CI_PROJECT_ID}..."
     curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
          --upload-file "${pkg}" \

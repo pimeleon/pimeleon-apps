@@ -38,7 +38,9 @@ else
     log_info "Updating submodules..."
     git submodule update --init --recursive --quiet
 fi
-if [[ ! -f "${SRC_DIR}/src/dnsmasq/CMakeLists.txt" ]]; then die "Submodules not correctly initialized"; fi
+if [[ ! -f "${SRC_DIR}/src/dnsmasq/CMakeLists.txt" ]]; then
+    die "Submodules not correctly initialized"
+fi
 
 cd "${SRC_DIR}"
 # Apply stability patches to FTL source code

@@ -21,7 +21,7 @@ fi
 # 3. Patch src/CMakeLists.txt for main FTL binary
 if [[ -f "src/CMakeLists.txt" ]]; then
     log_info "Neutralizing webserver and api references in src/CMakeLists.txt..."
-    
+
     # Comment out subdirectories we don't want (keep webserver for cJSON)
     for dir in api zip; do
         sed -i "s|^add_subdirectory(${dir})|# add_subdirectory(${dir})|g" src/CMakeLists.txt
@@ -43,7 +43,7 @@ if [[ -f "src/CMakeLists.txt" ]]; then
     if ! grep -q "linker_stubs.c" src/CMakeLists.txt; then
         sed -i 's|add_executable(pihole-FTL|add_executable(pihole-FTL linker_stubs.c|' src/CMakeLists.txt
     fi
-    
+
     # Force link the math library at the end of all other libraries
     sed -i 's|target_link_libraries(pihole-FTL ${LIBMBEDTLS} ${LIBMBEDX509} ${LIBMBEDCRYPTO})|target_link_libraries(pihole-FTL ${LIBMBEDTLS} ${LIBMBEDX509} ${LIBMBEDCRYPTO} m)|g' src/CMakeLists.txt
 fi
@@ -54,7 +54,7 @@ if [[ -f "src/config/password.c" ]]; then
 fi
 
 # 5. Strip -Werror
-find . -name "CMakeLists.txt" -print0 | while IFS= read -r -d '' f; do 
+find . -name "CMakeLists.txt" -print0 | while IFS= read -r -d '' f; do
     sed "s/-Werror//g" "$f" > "$f.tmp" && cat "$f.tmp" > "$f" && rm "$f.tmp"
 done
 

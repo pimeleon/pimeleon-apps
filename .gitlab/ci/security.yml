@@ -1,0 +1,18 @@
+---
+# GitLab CI/CD — Security Scanning
+
+security:gitleaks:
+  stage: security
+  image:
+    name: zricethezav/gitleaks:latest
+    entrypoint: [""]
+  tags:
+    - linux
+  needs: []
+  script:
+    - gitleaks detect --source . --verbose --staged || gitleaks detect --source . --verbose
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'

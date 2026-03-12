@@ -46,7 +46,7 @@ done
 # 1. Handle mount cleanup (Critical for Ctrl+C recovery)
 if [[ "$CLEAN_MOUNTS" == "true" ]]; then
     print_warning "Checking for stale mounts and loop devices..."
-    
+
     # Unmount anything under /tmp/build (in reverse order)
     STALE_MOUNTS=$(mount | grep -E "/tmp/build|pimeleon" | awk '{print $3}' | sort -r || true)
     if [[ -n "$STALE_MOUNTS" ]]; then

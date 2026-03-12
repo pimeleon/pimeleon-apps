@@ -22,12 +22,11 @@ print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # Defaults
 PRESERVE_CACHE=true
 PRESERVE_VOLUMES=true
-CLEAN_OUTPUT=true
 CLEAN_MOUNTS=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --full) PRESERVE_CACHE=false; PRESERVE_VOLUMES=false; CLEAN_OUTPUT=true; CLEAN_MOUNTS=true; shift ;;
+        --full) PRESERVE_CACHE=false; PRESERVE_VOLUMES=false; CLEAN_MOUNTS=true; shift ;;
         --clean-mounts) CLEAN_MOUNTS=true; shift ;;
         --no-cache) PRESERVE_CACHE=false; shift ;;
         --no-volumes) PRESERVE_VOLUMES=false; shift ;;

@@ -7,9 +7,8 @@ set -uo pipefail
 # Colors for report
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m'
+NC='\033[0m' # No Color
 
 # Quality Thresholds
 MAX_SHELLCHECK_WARNINGS=5
@@ -17,7 +16,7 @@ MAX_BASHATE_ERRORS=0
 MAX_SEMGREP_ISSUES=0
 
 # Core scripts to scan
-SCRIPTS=$(find shared/scripts scripts -name "*.sh" -not -path "*/cache/*")
+SCRIPTS=$(find scripts packages -name "*.sh" -not -path "*/cache/*")
 
 echo -e "${BLUE}==================================================${NC}"
 echo -e "${BLUE}       PIMELEON CODE QUALITY BENCHMARK          ${NC}"

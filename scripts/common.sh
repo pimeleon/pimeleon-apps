@@ -66,8 +66,10 @@ declare -a MOUNT_STACK=()
 safe_rm() {
     local work_dir_base="/tmp/build"
     local output_dir_base="/output"
-    local local_build_dir="$(pwd)/build"
-    local local_output_dir="$(pwd)/output"
+    local local_build_dir
+    local_build_dir="$(pwd)/build"
+    local local_output_dir
+    local_output_dir="$(pwd)/output"
 
     if [[ $# -eq 0 ]]; then
         log_warn "safe_rm: no paths provided, ignoring"

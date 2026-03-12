@@ -11,22 +11,8 @@ variables:
 
 workflow:
   rules:
-    # 1. Feature Branches: Minimal Checks
-    - if: '$CI_COMMIT_BRANCH != "master" && $CI_COMMIT_BRANCH != "main" && $CI_PIPELINE_SOURCE == "push"'
-      variables:
-        PIPELINE_MODE: "lightweight"
-    
-    # 2. MR to Master: Full Verification
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && ($CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master" || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main")'
-      variables:
-        PIPELINE_MODE: "heavyweight"
-
-    # 3. Master Branch: Full Checks + Build
-    - if: '$CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "main"'
-      variables:
-        PIPELINE_MODE: "heavyweight"
-
-    # Web and Scheduled triggers
-    - if: '$CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "schedule"'
-      variables:
-        PIPELINE_MODE: "heavyweight"
+    # Run on all push events, merge requests, web triggers, and schedules
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'

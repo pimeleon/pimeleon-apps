@@ -11,6 +11,7 @@ void http_terminate(void) {}
 void json_formatter(void* arg) {}
 void send_http(void* arg) {}
 void send_json_error(void* arg) {}
+void send_json_success(void) {}
 void send_http_internal_error(void) {}
 void send_http_code(int code) {}
 void pi_hole_extra_headers(void) {}
@@ -65,3 +66,18 @@ int http_method(void* a) { return 0; }
 bool startsWith(const char* a, const char* b) { return false; }
 char* http_get_cookie_str(void* a, const char* b) { return NULL; }
 int get_https_port(void) { return 443; }
+
+// Missing symbols from FTL v6.5 build failure
+void addJSONConfValue(void* a, const char* b, void* c) {}
+const char* get_web_theme_str(void) { return "default"; }
+int get_web_theme_val(void) { return 0; }
+void inflate_file(const char* a, const char* b) {}
+void deflate_file(const char* a, const char* b) {}
+void write_teleporter_zip_to_disk(void) {}
+void read_teleporter_zip_from_disk(const char* a) {}
+void printTOTP(void) {}
+void free_api(void) {}
+void delete_all_sessions(void) {}
+
+// Global variables
+const char* webthemes[] = {"default", NULL};

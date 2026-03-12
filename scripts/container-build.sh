@@ -3,6 +3,9 @@
 set -euo pipefail
 source /scripts/common.sh
 
+# Configure APT proxy if present (e.g. for local builds)
+configure_chroot_apt_proxy ""
+
 if [[ $# -lt 1 ]]; then
     die "Usage: $0 <package_name> [version]"
 fi

@@ -18,4 +18,5 @@ mkdir -p output
 # Launch build via Docker without registry push
 TARGET_ARCH=$ARCH \
 SOURCES=local \
+APT_PROXY="${APT_PROXY:-}" \
 ./scripts/build-package.sh "$PACKAGE"

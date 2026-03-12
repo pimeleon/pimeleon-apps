@@ -82,6 +82,7 @@ cmake -B build \
     -DGIT_VERSION=OFF \
     -DNET_UBUS=OFF \
     -DFT_TLS=OFF \
+    -DLIBMATH=m \
 
 log_info "Building pihole-FTL..."
 cmake --build build --verbose -- -j1

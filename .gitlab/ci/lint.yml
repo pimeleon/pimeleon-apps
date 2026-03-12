@@ -3,10 +3,13 @@
 
 lint:shell:
   stage: lint
-  image: lehcode/pimeleon-quality-bench:latest
+  image: koalaman/shellcheck-alpine:latest
   tags:
     - linux
   script:
+    - apk add --no-cache jq python3 py3-pip bash
+    - python3 -m venv .venv && source .venv/bin/activate
+    - pip install --no-cache-dir bashate semgrep
     - ./scripts/quality-benchmark.sh
 
 lint:yaml:

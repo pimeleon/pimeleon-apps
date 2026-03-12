@@ -57,7 +57,7 @@ check:upstream-versions:
       if [ "${CHANGED}" = "1" ]; then
         # Ensure all new sources are pre-downloaded and cached in registry
         ./scripts/update-sources.sh
-        
+
         git commit -m "chore(versions): update upstream package versions"
         git push origin HEAD:main
         echo "Pushed version updates — downstream pipeline will build affected packages"

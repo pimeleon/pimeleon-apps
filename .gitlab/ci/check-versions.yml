@@ -70,3 +70,7 @@ check:upstream-versions:
         ./scripts/update-sources.sh
         echo "All packages up to date, no changes committed"
       fi
+  artifacts:
+    paths:
+      - versions/
+    expire_in: 1 week

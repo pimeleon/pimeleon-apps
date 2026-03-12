@@ -10,7 +10,12 @@ security:gitleaks:
     - linux
   needs: []
   script:
-    - gitleaks detect --source . --verbose --config gitleaks.toml --staged || gitleaks detect --source . --verbose --config gitleaks.toml
+    - gitleaks detect --source . --verbose --config gitleaks.toml --report-path gitleaks-report.json --staged || gitleaks detect --source . --verbose --config gitleaks.toml --report-path gitleaks-report.json
+  artifacts:
+    paths:
+      - gitleaks-report.json
+    expire_in: 1 week
+    when: always
   rules:
     - if: '$CI_COMMIT_BRANCH == "develop"'
     - if: '$CI_COMMIT_BRANCH == "master"'

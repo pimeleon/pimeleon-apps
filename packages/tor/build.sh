@@ -7,7 +7,7 @@ source /package/package.env
 
 # Use version from env if not passed
 VERSION="${1:-$PACKAGE_VERSION}"
-WORK_DIR="/tmp/build-${PACKAGE_NAME}"
+WORK_DIR="/build/build-${PACKAGE_NAME}"
 SRC_DIR="${WORK_DIR}/tor-${VERSION}"
 INSTALL_DIR="${WORK_DIR}/install"
 mkdir -p "${WORK_DIR}" "${INSTALL_DIR}"
@@ -15,8 +15,7 @@ mkdir -p "${WORK_DIR}" "${INSTALL_DIR}"
 TARBALL="tor-${VERSION}.tar.gz"
 DIST_URL="https://dist.torproject.org/${TARBALL}"
 
-log_info "Downloading Tor ${VERSION} source"
-curl -fsSL -o "${WORK_DIR}/${TARBALL}" "${DIST_URL}"
+fetch_source "${PACKAGE_NAME}" "${VERSION}" "${TARBALL}" "${DIST_URL}" "${WORK_DIR}/${TARBALL}"
 
 log_info "Extracting source"
 tar xf "${WORK_DIR}/${TARBALL}" -C "${WORK_DIR}"

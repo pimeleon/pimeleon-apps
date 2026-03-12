@@ -1,47 +1,51 @@
 #!/bin/bash
 # packages/dnscrypt-proxy/build.sh
-# BUILD_TYPE=binary: download pre-built GitHub release asset, verify, repack
+# BUILD_TYPE=source: compile from source using Go toolchain
 set -euo pipefail
 source /scripts/common.sh
 source /package/package.env
 
 # Use version from env if not passed
 VERSION="${1:-$PACKAGE_VERSION}"
-WORK_DIR="/tmp/build-${PACKAGE_NAME}"
-mkdir -p "${WORK_DIR}"
+WORK_DIR="/build/build-${PACKAGE_NAME}"
+SRC_DIR="${WORK_DIR}/dnscrypt-proxy-${VERSION}"
+INSTALL_DIR="${WORK_DIR}/install"
+mkdir -p "${WORK_DIR}" "${INSTALL_DIR}"
 
-# Select asset name for this arch
-if [[ "${TARGET_ARCH}" == "armhf" ]]; then
-    ASSET="${UPSTREAM_ASSET_ARMHF/\{VERSION\}/${VERSION}}"
-else
-    ASSET="${UPSTREAM_ASSET_ARM64/\{VERSION\}/${VERSION}}"
-fi
+TARBALL="${PACKAGE_NAME}-${VERSION}.tar.gz"
+DIST_URL="https://github.com/DNSCrypt/dnscrypt-proxy/archive/refs/tags/${VERSION}.tar.gz"
 
-DOWNLOAD_URL="https://github.com/${UPSTREAM_REPO}/releases/download/${VERSION}/${ASSET}"
-log_info "Downloading ${DOWNLOAD_URL}"
-curl -fsSL -o "${WORK_DIR}/${ASSET}" "${DOWNLOAD_URL}"
+fetch_source "${PACKAGE_NAME}" "${VERSION}" "${TARBALL}" "${DIST_URL}" "${WORK_DIR}/${TARBALL}"
 
-# Extract binary from the upstream archive
-log_info "Extracting ${ASSET}"
-tar xf "${WORK_DIR}/${ASSET}" -C "${WORK_DIR}"
+log_info "Extracting source"
+tar xf "${WORK_DIR}/${TARBALL}" -C "${WORK_DIR}"
+cd "${SRC_DIR}/dnscrypt-proxy"
 
-# Find the binary (it's inside a subdirectory like linux-arm/)
-BINARY=$(find "${WORK_DIR}" -name "${OUTPUT_BINARY}" -type f | head -1)
-[[ -n "${BINARY}" ]] || die "Binary '${OUTPUT_BINARY}' not found in extracted archive"
-log_info "Found binary: ${BINARY}"
+log_info "Building ${PACKAGE_NAME} v${VERSION} for ${TARGET_ARCH} from source..."
 
-# Use arch-specific strip tool
-HOST_TRIPLE=${CC%-gcc}
-STRIP_TOOL="${HOST_TRIPLE}-strip"
+# Build Configuration:
+# - CGO_ENABLED=0: Static binary (no libc dependency)
+# - -trimpath: Remove local file paths from binary
+# - -ldflags="-s -w": Strip symbols and debug info
+# - -tags "netgo osusergo": Use Go-native DNS and user lookups
+export CGO_ENABLED=0
 
-# Strip debug symbols to reduce size (using host native strip)
-${STRIP_TOOL} --strip-unneeded "${BINARY}" || log_warn "strip failed (may be already stripped)"
+go build -v \
+    -trimpath \
+    -ldflags="-s -w" \
+    -tags "netgo osusergo" \
+    -o "${WORK_DIR}/${OUTPUT_BINARY}"
 
-# Repack into standard output format: flat tarball with just the binary
+# Verify the binary properties
+log_info "Verifying built binary..."
+file "${WORK_DIR}/${OUTPUT_BINARY}"
+ldd "${WORK_DIR}/${OUTPUT_BINARY}" || log_info "Binary is statically linked (verified)."
+
+# Repack into standard output format
 OUTPUT_ARCHIVE="${OUTPUT_DIR}/${PACKAGE_NAME}-${VERSION}-${TARGET_ARCH}-pimeleon.tar.gz"
 log_info "Packaging binary..."
-tar czf "${OUTPUT_ARCHIVE}" -C "$(dirname "${BINARY}")" "$(basename "${BINARY}")"
+tar czf "${OUTPUT_ARCHIVE}" -C "${WORK_DIR}" "${OUTPUT_BINARY}"
 
 # Generate checksum
 sha256sum "${OUTPUT_ARCHIVE}" | tee "${OUTPUT_ARCHIVE}.sha256"
-log_success "Packed: ${OUTPUT_ARCHIVE}"
+log_success "Build complete: ${OUTPUT_ARCHIVE}"

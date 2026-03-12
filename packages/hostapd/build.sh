@@ -6,7 +6,7 @@ source /scripts/common.sh
 source /package/package.env
 
 VERSION="${1:-$PACKAGE_VERSION}"
-WORK_DIR="/tmp/build-${PACKAGE_NAME}"
+WORK_DIR="/build/build-${PACKAGE_NAME}"
 SRC_DIR="${WORK_DIR}/hostapd-${VERSION}/hostapd"
 INSTALL_DIR="${WORK_DIR}/install"
 mkdir -p "${WORK_DIR}" "${INSTALL_DIR}/usr/local/bin"
@@ -14,8 +14,7 @@ mkdir -p "${WORK_DIR}" "${INSTALL_DIR}/usr/local/bin"
 TARBALL="hostapd-${VERSION}.tar.gz"
 DIST_URL="https://w1.fi/releases/${TARBALL}"
 
-log_info "Downloading hostapd ${VERSION} source"
-curl -fsSL -o "${WORK_DIR}/${TARBALL}" "${DIST_URL}"
+fetch_source "${PACKAGE_NAME}" "${VERSION}" "${TARBALL}" "${DIST_URL}" "${WORK_DIR}/${TARBALL}"
 
 log_info "Extracting source"
 tar xf "${WORK_DIR}/${TARBALL}" -C "${WORK_DIR}"
@@ -43,8 +42,7 @@ export PKG_CONFIG_LIBDIR="/usr/lib/${HOST_TRIPLE}/pkgconfig:/usr/lib/pkgconfig:/
 export PKG_CONFIG_PATH=""
 export PKG_CONFIG_ALLOW_SYSTEM_LIBS=1
 export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1
-log_info "Building hostapd for ${TARGET_ARCH}..."
-HOST_TRIPLE=$(gcc -dumpmachine)
+log_info "Building hostapd for ${TARGET_ARCH} using triple ${HOST_TRIPLE}..."
 
 # hostapd Makefile uses CC, set it to the cross-compiler
 # Use pkg-config to get correct CFLAGS/LIBS for libnl

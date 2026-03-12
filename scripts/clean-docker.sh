@@ -53,7 +53,7 @@ if [[ "$CLEAN_MOUNTS" == "true" ]]; then
     if [[ -n "$STALE_MOUNTS" ]]; then
         for mnt in $STALE_MOUNTS; do
             print_info "Unmounting $mnt..."
-            sudo umount -l "$mnt" 2>/dev/null || true
+            umount -l "$mnt" 2>/dev/null || true
         done
     fi
 
@@ -62,15 +62,15 @@ if [[ "$CLEAN_MOUNTS" == "true" ]]; then
     if [[ -n "$STALE_LOOPS" ]]; then
         for loop in $STALE_LOOPS; do
             print_info "Detaching loop device $loop..."
-            sudo kpartx -d "$loop" 2>/dev/null || true
-            sudo losetup -d "$loop" 2>/dev/null || true
+            kpartx -d "$loop" 2>/dev/null || true
+            losetup -d "$loop" 2>/dev/null || true
         done
     fi
 
     # Clean up partial images/tarballs
     print_info "Cleaning up potential partial artifacts..."
-    sudo find ./output -name "*.tar.gz" -mmin -15 -delete 2>/dev/null || true
-    sudo find ./output -name "*.img" -mmin -15 -delete 2>/dev/null || true
+    find ./output -name "*.tar.gz" -mmin -15 -delete 2>/dev/null || true
+    find ./output -name "*.img" -mmin -15 -delete 2>/dev/null || true
 fi
 
 # 2. Stop Docker resources
@@ -79,7 +79,7 @@ docker compose down 2>/dev/null || true
 
 if [[ "$PRESERVE_CACHE" == "false" ]]; then
     print_warning "Removing local cache directory..."
-    sudo rm -rf ./cache/*
+    rm -rf ./cache/*
 fi
 
 if [[ "$PRESERVE_VOLUMES" == "false" ]]; then

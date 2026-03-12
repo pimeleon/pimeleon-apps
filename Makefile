@@ -1,4 +1,4 @@
-.PHONY: help build compile compile-all compile-tor compile-dns compile-hostapd compile-pihole clean lint factory-init refresh-tools tor dns dnscrypt-proxy hostapd pihole-ftl pihole pi-hole
+.PHONY: help build compile compile-all compile-tor compile-dns compile-hostapd compile-wpa_supplicant compile-privoxy compile-pihole clean lint factory-init refresh-tools tor dns dnscrypt-proxy hostapd wpa_supplicant privoxy pihole-ftl pihole pi-hole
 
 # Use bash for all recipes and run in a single shell per target
 SHELL := /bin/bash
@@ -32,6 +32,8 @@ help:
 	@echo "  make tor            - Compile Tor binary"
 	@echo "  make dnscrypt-proxy - Compile DNSCrypt-Proxy binary"
 	@echo "  make hostapd        - Compile Hostapd binary"
+	@echo "  make wpa_supplicant - Compile Wpa_supplicant binary"
+	@echo "  make privoxy        - Compile Privoxy binary"
 	@echo "  make pihole-ftl     - Compile Pi-hole FTL binary"
 	@echo "  make factory-init   - Prepare/Force-rebuild builder environment"
 	@echo "  make refresh-tools  - Download/cache build tools locally"
@@ -45,6 +47,8 @@ tor: compile-tor
 dns: compile-dns
 dnscrypt-proxy: compile-dns
 hostapd: compile-hostapd
+wpa_supplicant: compile-wpa_supplicant
+privoxy: compile-privoxy
 pihole-ftl: compile-pihole
 pihole: compile-pihole
 pi-hole: compile-pihole
@@ -72,12 +76,22 @@ compile-hostapd:
 	@trap "$(PROJECT_ROOT)/scripts/clean-docker.sh --clean-mounts; exit 1" INT TERM
 	./scripts/build-package.sh hostapd
 
+compile-wpa_supplicant:
+	@echo "==> Building wpa_supplicant (latest) [Arch: $(TARGET_ARCH), Source: $(SOURCES)]"
+	@trap "$(PROJECT_ROOT)/scripts/clean-docker.sh --clean-mounts; exit 1" INT TERM
+	./scripts/build-package.sh wpa_supplicant
+
+compile-privoxy:
+	@echo "==> Building privoxy (latest) [Arch: $(TARGET_ARCH), Source: $(SOURCES)]"
+	@trap "$(PROJECT_ROOT)/scripts/clean-docker.sh --clean-mounts; exit 1" INT TERM
+	./scripts/build-package.sh privoxy
+
 compile-pihole:
 	@echo "==> Building pihole-ftl (latest) [Arch: $(TARGET_ARCH), Source: $(SOURCES)]"
 	@trap "$(PROJECT_ROOT)/scripts/clean-docker.sh --clean-mounts; exit 1" INT TERM
 	./scripts/build-package.sh pihole-FTL
 
-compile-all: compile-tor compile-dns compile-hostapd compile-pihole
+compile-all: compile-tor compile-dns compile-hostapd compile-wpa_supplicant compile-privoxy compile-pihole
 
 clean:
 	rm -rf output/*.tar.gz output/*.sha256

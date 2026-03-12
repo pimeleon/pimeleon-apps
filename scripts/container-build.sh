@@ -13,10 +13,22 @@ fi
 PKG_NAME="$1"
 PKG_VERSION="${2:-latest}"
 
-# If version is latest, try to get it from package.env
-if [[ "${PKG_VERSION}" == "latest" && -f "/package/package.env" ]]; then
+# Source package environment if present
+if [[ -f "/package/package.env" ]]; then
     source /package/package.env
     PKG_VERSION="${PACKAGE_VERSION:-latest}"
+fi
+
+# Install dependencies if defined
+case "${TARGET_ARCH}" in
+    armhf) DEPS_VAR="BUILD_DEPS_ARMHF" ;;
+    arm64) DEPS_VAR="BUILD_DEPS_ARM64" ;;
+    *) DEPS_VAR="" ;;
+esac
+
+if [[ -n "${DEPS_VAR}" && -n "${!DEPS_VAR:-}" ]]; then
+    log_info "Installing dependencies: ${!DEPS_VAR}"
+    apt-get update && apt-get install -yq --no-install-recommends ${!DEPS_VAR}
 fi
 
 # Execute the specific package build script

@@ -2,8 +2,8 @@ FROM debian:12-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Create required directories early while path is clean
-RUN /bin/mkdir -p /package /scripts /output
+# Create required directories early while path is clean and ensure they are writable
+RUN /bin/mkdir -p /package /scripts /output /build /logs && /bin/chmod 777 /package /scripts /output /build /logs
 
 ARG APT_CACHE_SERVER
 ARG APT_CACHE_PORT=3142
@@ -50,13 +50,18 @@ RUN apt-get update && apt-get install -yq --no-install-recommends \
     libsystemd-dev:armhf \
     libnl-3-dev:armhf \
     libnl-genl-3-dev:armhf \
+    libnl-route-3-dev:armhf \
+    libdbus-1-dev:armhf \
+    libpcre2-dev:armhf \
+    libzstd-dev:armhf \
     libpcap-dev:armhf \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Go toolchain for armhf cross-compilation
-COPY cache/tools/go*.tar.gz /tmp/go.tar.gz
-RUN tar -C /usr/local -xzf /tmp/go.tar.gz && rm /tmp/go.tar.gz
+COPY cache/tools/go*.tar.gz /usr/local/go.tar.gz
+RUN tar -C /usr/local -xzf /usr/local/go.tar.gz && rm /usr/local/go.tar.gz
 ENV PATH="/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ENV GOTOOLCHAIN=local
 ENV GOARCH=arm
 ENV GOARM=7
 ENV CGO_ENABLED=1

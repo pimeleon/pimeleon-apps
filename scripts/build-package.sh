@@ -22,6 +22,11 @@ cleanup_handler() {
         log_warn "Cleaning up build container..."
         docker rm -f "${CONTAINER_ID}" >/dev/null 2>&1 || true
     fi
+    # On failure or interruption, remove the specific build directory to prevent stale artifacts
+    if [[ $exit_code -ne 0 ]]; then
+        log_warn "Removing stalled build directory for ${PKG_NAME}..."
+        safe_rm "build/build-${PKG_NAME}" || true
+    fi
     exit $exit_code
 }
 trap "cleanup_handler" EXIT ERR INT TERM PIPE
@@ -37,14 +42,19 @@ log_section "Building ${PKG_NAME} (${PKG_VERSION}) [Arch: ${TARGET_ARCH}, Source
 
 # 1. Prepare Container (Command MUST be specified at creation)
 IMAGE="pimeleon-builder-${TARGET_ARCH}:latest"
+mkdir -p build logs
 CONTAINER_ID=$(docker create \
     --privileged \
+    --user "$(id -u):$(id -g)" \
     -v /dev:/dev:rw \
-    -v /tmp/pimeleon-build:/tmp/pimeleon-build \
+    -v "$(pwd)/build:/build" \
+    -v "$(pwd)/cache:/cache" \
+    -v "$(pwd)/logs:/logs" \
     -e PACKAGE_NAME="${PKG_NAME}" \
     -e PACKAGE_VERSION="${PKG_VERSION}" \
     -e TARGET_ARCH="${TARGET_ARCH}" \
     -e OUTPUT_DIR="${OUTPUT_DIR}" \
+    -e LOGS_DIR="/logs" \
     -e PIMELEON_PROFILE="${PIMELEON_PROFILE}" \
     -e APT_CACHE_SERVER="${APT_CACHE_SERVER:-}" \
     -e APT_CACHE_PORT="${APT_CACHE_PORT:-}" \
@@ -58,7 +68,8 @@ docker cp scripts/. "${CONTAINER_ID}:/scripts/"
 docker cp "packages/${PKG_NAME}/." "${CONTAINER_ID}:/package/"
 
 # 3. Execute Build (Start and Attach)
-docker start -a "${CONTAINER_ID}"
+log_info "Logging build output to logs/${PKG_NAME}-${TARGET_ARCH}.log"
+docker start -a "${CONTAINER_ID}" 2>&1 | tee "logs/${PKG_NAME}-${TARGET_ARCH}.log"
 
 # 4. Extract Results
 log_info "Extracting results..."

@@ -5,9 +5,9 @@ set -E
 export PATH="/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
 
 SUDO=""
-if command -v sudo >/dev/null 2>&1; then
-    SUDO="sudo"
-fi
+# if command -v sudo >/dev/null 2>&1; then
+#     SUDO="sudo"
+# fi
 
 # Project name for cache keys and output naming
 PIMELEON_PROJECT_NAME="${PIMELEON_PROJECT_NAME:-pimeleon}"
@@ -66,6 +66,8 @@ declare -a MOUNT_STACK=()
 safe_rm() {
     local work_dir_base="/tmp/build"
     local output_dir_base="/output"
+    local local_build_dir="$(pwd)/build"
+    local local_output_dir="$(pwd)/output"
 
     if [[ $# -eq 0 ]]; then
         log_warn "safe_rm: no paths provided, ignoring"
@@ -77,11 +79,17 @@ safe_rm() {
             continue
         fi
 
+        # Resolve relative paths to absolute for check
+        local abs_path
+        abs_path=$(realpath -m "$path" 2>/dev/null || echo "$path")
+
         # Only allow deletion within sanctioned directories
-        if [[ "$path" == "${work_dir_base}"* ]] || \
-           [[ -n "${WORK_DIR:-}" && "$path" == "${WORK_DIR}"* ]] || \
-           [[ "$path" == "${output_dir_base}"* ]] || \
-           [[ -n "${OUTPUT_DIR:-}" && "$path" == "${OUTPUT_DIR}"* ]]; then
+        if [[ "$abs_path" == "${work_dir_base}"* ]] || \
+           [[ "$abs_path" == "${local_build_dir}"* ]] || \
+           [[ "$abs_path" == "${output_dir_base}"* ]] || \
+           [[ "$abs_path" == "${local_output_dir}"* ]] || \
+           [[ -n "${WORK_DIR:-}" && "$abs_path" == "${WORK_DIR}"* ]] || \
+           [[ -n "${OUTPUT_DIR:-}" && "$abs_path" == "${OUTPUT_DIR}"* ]]; then
 
             # Proactively find and unmount any sub-mounts under this path
             # Only if path is a directory
@@ -104,12 +112,26 @@ safe_rm() {
         fi
     done
 }
+# Track original PID to ensure only the main process runs cleanup
+PIMELEON_MAIN_PID=$$
+
 # Cleanup function for trap handlers
 cleanup_on_exit() {
     local exit_code=$?
+    # Only run cleanup in the main process
+    if [[ $$ -ne $PIMELEON_MAIN_PID ]]; then
+        return
+    fi
+
     # Clear traps to prevent recursive calls during cleanup
     trap - EXIT ERR INT TERM
     set +e # Don't exit on error during cleanup
+
+    # Comprehensive cleanup for 'all' mode at exit (success or failure)
+    if [[ "${PACKAGE:-}" == "all" ]]; then
+        log_warn "Cleaning up all build artifacts..."
+        safe_rm build/* || true
+    fi
 
     # On failure (non-zero exit code)
     if [[ $exit_code -ne 0 ]]; then
@@ -138,6 +160,10 @@ cleanup_on_exit() {
     fi
 
     if [[ $exit_code -ne 0 ]]; then
+        if [[ -n "${CURRENT_PKG:-}" ]]; then
+            log_warn "Removing stalled build directory for ${CURRENT_PKG}..."
+            safe_rm "build/build-${CURRENT_PKG}" || true
+        fi
         if [[ -n "${LOG_FILE:-}" ]]; then
             log_info "Detailed build log: ${LOG_FILE}"
         fi
@@ -756,6 +782,55 @@ cache_put() {
     ${SUDO} chown "${PIMELEON_USER}:${PIMELEON_GROUP}" "$cache_path"
 }
 
+# Fetch source tarball from the registry (falling back to upstream if needed).
+# Usage: fetch_source <package> <version> <tarball_name> <upstream_url> <target_path>
+fetch_source() {
+    local pkg_name="$1"
+    local version="$2"
+    local tarball_name="$3"
+    local upstream_url="$4"
+    local target_path="$5"
+    local local_cache_dir="/cache/pimeleon-downloads"
+    local project_id="${PIMELEON_APPS_PROJECT_ID:-20}"
+    local reg="https://gitlab.pirouter.dev/api/v4/projects/${project_id}/packages/generic/sources"
+
+    # 0. Try Local Container Cache (mounted from host's cache/)
+    if [[ -f "${local_cache_dir}/${tarball_name}" ]]; then
+        log_info "Using locally cached ${tarball_name} from ${local_cache_dir}"
+        cp "${local_cache_dir}/${tarball_name}" "${target_path}"
+        return 0
+    fi
+
+    # 1. Try Local Registry (if JOB-TOKEN or PIMELEON_APPS_READ_TOKEN is set)
+    local token="${CI_JOB_TOKEN:-${PIMELEON_APPS_READ_TOKEN:-}}"
+    if [[ -n "${token}" ]]; then
+        local registry_url="${reg}/${pkg_name}/${version}/${tarball_name}"
+        log_info "Attempting to fetch ${pkg_name} ${version} source from registry..."
+        
+        # Determine header based on token type
+        local auth_header="JOB-TOKEN: ${token}"
+        if [[ -z "${CI_JOB_TOKEN:-}" ]]; then
+            auth_header="PRIVATE-TOKEN: ${token}"
+        fi
+
+        if curl -fsSL -k -H "${auth_header}" -o "${target_path}" "${registry_url}"; then
+            log_success "Fetched ${pkg_name} ${version} from registry."
+            return 0
+        fi
+        log_warn "Source not found in registry, falling back to upstream."
+    fi
+
+    # 2. Try Upstream
+    log_info "Downloading ${pkg_name} ${version} from upstream: ${upstream_url}"
+    if curl -fsSL -o "${target_path}" "${upstream_url}"; then
+        log_success "Downloaded ${pkg_name} ${version} from upstream."
+        return 0
+    else
+        log_error "Failed to download ${pkg_name} from upstream."
+        return 1
+    fi
+}
+
 # Fetch a pre-built binary package from the pi-router-apps Generic Package Registry.
 # Usage: fetch_pimeleon_apps <package> <arch> <download_dir>
 # Saves as <download_dir>/<package>.tar.gz (matching existing Ansible task expectations).
@@ -797,3 +872,4 @@ fetch_pimeleon_apps() {
         return 1
     fi
 }
+trap "cleanup_on_exit" EXIT ERR INT TERM

@@ -1,0 +1,16 @@
+# Gitleaks Configuration for Pimeleon
+# whitelisting historical placeholders and public keys
+
+[allowlist]
+description = "Whitelist dnscrypt-proxy historical placeholders"
+# Allow specific commit SHAs known to contain placeholders
+commits = [
+    "701e1bfe9747f87fe1f1072fee8dfc431ac03762"
+]
+# Allow specific fingerprints
+fingerprints = [
+    "a4188aa9119348b8dc2acb456828d8184e39e956",
+    "c46233c1fb4710b1044ce3e622e05f31fdf84a6c",
+    "23e3cbeacfc2cdcd65972c337feb3349548ad14c",
+    "701e1bfe9747f87fe1f1072fee8dfc431ac03762"
+]

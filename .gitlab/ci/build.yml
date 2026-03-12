@@ -7,7 +7,7 @@ build:smoke:
   services:
     - docker:dind
   tags:
-    - linux
+    - docker
     - heavyweight
   needs:
     - job: "lint:shell"

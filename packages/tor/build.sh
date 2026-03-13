@@ -21,6 +21,10 @@ log_info "Extracting source"
 tar xf "${WORK_DIR}/${TARBALL}" -C "${WORK_DIR}"
 cd "${SRC_DIR}"
 
+log_info "Patching configure to force cross-compilation mode..."
+# Force cross_compiling=yes to skip execution checks for libevent, openssl, and zlib
+sed -i 's/cross_compiling=maybe/cross_compiling=yes/g' configure
+
 log_info "Configuring for ${TARGET_ARCH}"
 
 # Determine cross-compilation triple from CC
@@ -51,6 +55,12 @@ export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1
 
 log_info "Using HOST_TRIPLE: ${HOST_TRIPLE}"
 log_info "Using PKG_CONFIG: $(command -v "${PKG_CONFIG}")"
+
+# Pre-seed configure cache to bypass 'runnable' checks for cross-compiled static libs.
+# Tor's configure tries to run a test program to verify the library, which fails on x86_64 host.
+export tor_cv_library_libevent_linker_option=""
+export tor_cv_library_openssl_linker_option=""
+export tor_cv_library_zlib_linker_option=""
 
 ./configure \
     --host="${HOST_TRIPLE}" \

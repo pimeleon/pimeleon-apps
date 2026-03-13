@@ -27,6 +27,18 @@ log_info "Configuring for ${TARGET_ARCH}"
 # CC is arm-linux-gnueabihf-gcc or aarch64-linux-gnu-gcc
 HOST_TRIPLE=${CC%-gcc}
 
+# Workaround for Tor's non-multiarch-aware static library lookup.
+# It expects static libraries in $DIR/lib but Debian multiarch puts them in $DIR/lib/$HOST_TRIPLE.
+DEPS_DIR="${WORK_DIR}/tor-deps"
+log_info "Creating multiarch-aware dependency directory at ${DEPS_DIR}..."
+mkdir -p "${DEPS_DIR}/lib"
+ln -snf /usr/include "${DEPS_DIR}/include"
+# Link all static libraries from multiarch path to the flat lib dir Tor expects
+for lib in /usr/lib/${HOST_TRIPLE}/*.a; do
+    [ -e "$lib" ] || continue
+    ln -sf "$lib" "${DEPS_DIR}/lib/"
+done
+
 # Set cross-compilation environment variables for pkg-config
 export PKG_CONFIG="${HOST_TRIPLE}-pkg-config"
 export PKG_CONFIG_SYSROOT_DIR="/"
@@ -42,6 +54,9 @@ log_info "Using PKG_CONFIG: $(command -v "${PKG_CONFIG}")"
 
 ./configure \
     --host="${HOST_TRIPLE}" \
+    --with-libevent-dir="${DEPS_DIR}" \
+    --with-openssl-dir="${DEPS_DIR}" \
+    --with-zlib-dir="${DEPS_DIR}" \
     ${CONFIGURE_FLAGS}
 
 log_info "Building Tor..."

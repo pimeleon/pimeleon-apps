@@ -4,15 +4,13 @@
 build:smoke:
   stage: build
   image: docker:latest
-  services:
-    - docker:dind
   tags:
     - containers
   needs:
     - job: "lint:shell"
     - job: "lint:yaml"
   variables:
-    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_HOST: unix:///var/run/docker.sock
   script:
     # Basic verification: Ensure the builder environment can be initialized
     - apk add --no-cache make bash curl
@@ -25,22 +23,22 @@ build:smoke:
     expire_in: 1 week
     when: always
   rules:
+    # Run on develop branch push
     - if: '$CI_COMMIT_BRANCH == "develop"'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    # Run on MRs targeting develop (or any branch except master)
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME != "master"'
 
+# Full build for production branch (master) or MRs targeting master
 build:all:
   stage: build
   image: docker:latest
-  services:
-    - docker:dind
   tags:
-    - docker
-    - heavyweight
+    - containers
   needs:
     - job: "lint:shell"
     - job: "lint:yaml"
   variables:
-    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_HOST: unix:///var/run/docker.sock
   script:
     - apk add --no-cache make bash curl
     - make refresh-tools
@@ -48,10 +46,12 @@ build:all:
     - ./local-build.sh all $DEFAULT_ARCH
   artifacts:
     paths:
-      - logs/
       - output/
+      - logs/
     expire_in: 1 week
     when: always
   rules:
+    # Run on direct push or merge to master
     - if: '$CI_COMMIT_BRANCH == "master"'
-    - if: '$CI_COMMIT_BRANCH == "main"'
+    # Run on MRs targeting master to verify full build before merge
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'

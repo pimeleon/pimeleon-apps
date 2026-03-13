@@ -1,0 +1,20 @@
+---
+# GitLab CI/CD — Publishing
+
+# Deploy built binaries to GitLab Generic Package Registry
+publish:gitlab:
+  stage: publish
+  image: alpine:latest
+  tags:
+    - linux
+  needs:
+    - job: build:all
+      artifacts: true
+  rules:
+    # Run on direct push or merge to master
+    - if: '$CI_COMMIT_BRANCH == "master"'
+    # Run on MRs targeting master to produce deployments during the merge verification
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
+  script:
+    - apk add --no-cache curl bash
+    - ./scripts/ci-publish-gitlab.sh

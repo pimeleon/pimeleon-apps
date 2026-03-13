@@ -5,6 +5,7 @@ stages:
   - lint
   - check
   - build
+  - publish
 
 variables:
   GIT_DEPTH: 0

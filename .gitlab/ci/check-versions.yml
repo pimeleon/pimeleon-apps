@@ -15,7 +15,6 @@ check:upstream-versions:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == "develop"'
     - if: '$CI_COMMIT_BRANCH == "master"'
-    - if: '$CI_COMMIT_BRANCH == "main"'
   script:
     - apk add --no-cache curl git python3 bash
     - git config user.email "ci-version-bot@pirouter.dev"
@@ -63,7 +62,7 @@ check:upstream-versions:
         ./scripts/update-sources.sh
 
         git commit -m "chore(versions): update upstream package versions"
-        git push origin HEAD:main
+        git push origin HEAD:master
         echo "Pushed version updates — downstream pipeline will build affected packages"
       else
         # Always ensure current sources are cached

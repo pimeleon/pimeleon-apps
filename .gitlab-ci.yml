@@ -1,7 +1,7 @@
 ---
 # pi-router-apps — GitLab CI/CD entry point
 # Lightweight pipeline: lint + security + upstream version checking + smoke build.
-# Full package builds and publishing run on GitHub Actions.
+# Full package builds and publishing run on production branches (master/main).
 
 include:
   - local: '.gitlab/ci/workflow.yml'
@@ -9,3 +9,4 @@ include:
   - local: '.gitlab/ci/security.yml'
   - local: '.gitlab/ci/check-versions.yml'
   - local: '.gitlab/ci/build.yml'
+  - local: '.gitlab/ci/publish.yml'

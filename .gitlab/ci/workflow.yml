@@ -10,8 +10,14 @@ stages:
 variables:
   GIT_DEPTH: 0
   DEFAULT_ARCH: "armhf"
+  QUIET: "1"
+
+default:
+  interruptible: true
 
 workflow:
+  auto_cancel:
+    on_new_commit: interruptible
   rules:
     # Run on all push events, merge requests, web triggers, and schedules
     - if: '$CI_PIPELINE_SOURCE == "push"'

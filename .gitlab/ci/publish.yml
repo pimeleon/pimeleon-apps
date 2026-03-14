@@ -10,6 +10,7 @@ publish:gitlab:
   needs:
     - job: build:all
       artifacts: true
+  interruptible: true
   rules:
     # Run on direct push or merge to master
     - if: '$CI_COMMIT_BRANCH == "master"'

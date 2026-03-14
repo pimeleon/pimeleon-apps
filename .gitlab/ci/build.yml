@@ -9,19 +9,19 @@ build:smoke:
   needs:
     - job: "lint:shell"
     - job: "lint:yaml"
+  interruptible: true
   variables:
     DOCKER_HOST: unix:///var/run/docker.sock
+  parallel:
+    matrix:
+      - TARGET_ARCH: ["armhf", "arm64"]
   script:
     # Basic verification: Ensure the builder environment can be initialized
     - apk add --no-cache make bash curl
     - make refresh-tools
-    - make factory-init TARGET_ARCH=$DEFAULT_ARCH
-  artifacts:
-    paths:
-      - logs/
-      - output/
-    expire_in: 1 week
-    when: always
+    - make factory-init TARGET_ARCH=$TARGET_ARCH
+  cache:
+    policy: pull
   rules:
     # Run on develop branch push
     - if: '$CI_COMMIT_BRANCH == "develop"'
@@ -37,13 +37,17 @@ build:all:
   needs:
     - job: "lint:shell"
     - job: "lint:yaml"
+  interruptible: true
   variables:
     DOCKER_HOST: unix:///var/run/docker.sock
+  parallel:
+    matrix:
+      - TARGET_ARCH: ["armhf", "arm64"]
   script:
     - apk add --no-cache make bash curl
     - make refresh-tools
-    - make factory-init TARGET_ARCH=$DEFAULT_ARCH
-    - ./local-build.sh all $DEFAULT_ARCH
+    - make factory-init TARGET_ARCH=$TARGET_ARCH
+    - ./local-build.sh all $TARGET_ARCH
   artifacts:
     paths:
       - output/

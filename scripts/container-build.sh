@@ -28,7 +28,7 @@ esac
 
 if [[ -n "${DEPS_VAR}" && -n "${!DEPS_VAR:-}" ]]; then
     log_info "Installing dependencies: ${!DEPS_VAR}"
-    apt-get update && apt-get install -yq --no-install-recommends ${!DEPS_VAR}
+    apt-get update -qq && apt-get install -yqq --no-install-recommends ${!DEPS_VAR}
 fi
 
 # Execute the specific package build script

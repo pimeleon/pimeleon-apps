@@ -7,17 +7,25 @@ source /package/package.env
 
 VERSION="${1:-$PACKAGE_VERSION}"
 WORK_DIR="/build/build-${PACKAGE_NAME}"
-SRC_DIR="${WORK_DIR}/privoxy-${VERSION}-stable"
+SRC_DIR="${WORK_DIR}/privoxy-${VERSION}"
 INSTALL_DIR="${WORK_DIR}/install"
 mkdir -p "${WORK_DIR}" "${INSTALL_DIR}/usr/local/sbin" "${INSTALL_DIR}/etc/privoxy/templates"
 
-TARBALL="privoxy-${VERSION}-stable-src.tar.gz"
-DIST_URL="https://www.privoxy.org/sf-download-mirror/Sources/${VERSION}%20(stable)/${TARBALL}"
+# Handle Source (Git or Tarball)
+if [[ "${UPSTREAM_REPO}" == *.git ]]; then
+    log_info "Cloning Privoxy from ${UPSTREAM_REPO}..."
+    rm -rf "${SRC_DIR}"
+    git clone --depth 1 --branch "v_$(echo ${VERSION} | tr '.' '_')" "${UPSTREAM_REPO}" "${SRC_DIR}"
+else
+    TARBALL="privoxy-${VERSION}-stable-src.tar.gz"
+    DIST_URL="https://www.privoxy.org/sf-download-mirror/Sources/${VERSION}%20(stable)/${TARBALL}"
+    fetch_source "${PACKAGE_NAME}" "${VERSION}" "${TARBALL}" "${DIST_URL}" "${WORK_DIR}/${TARBALL}"
+    log_info "Extracting source"
+    tar xf "${WORK_DIR}/${TARBALL}" -C "${WORK_DIR}"
+    # SourceForge tarballs extract to privoxy-X.Y.Z-stable
+    mv "${WORK_DIR}/privoxy-${VERSION}-stable" "${SRC_DIR}" 2>/dev/null || true
+fi
 
-fetch_source "${PACKAGE_NAME}" "${VERSION}" "${TARBALL}" "${DIST_URL}" "${WORK_DIR}/${TARBALL}"
-
-log_info "Extracting source"
-tar xf "${WORK_DIR}/${TARBALL}" -C "${WORK_DIR}"
 cd "${SRC_DIR}"
 
 log_info "Generating configure script"

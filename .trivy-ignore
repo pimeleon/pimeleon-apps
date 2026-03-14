@@ -1,0 +1,6 @@
+# .trivy-ignore
+# List of vulnerability IDs or secret rule IDs to ignore
+# Format: one ID per line, optionally followed by a comment starting with #
+# Example:
+# CVE-2023-1234 # Known safe in our environment
+# github-pat # Test token

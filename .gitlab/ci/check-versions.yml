@@ -9,6 +9,7 @@ check:upstream-versions:
   tags:
     - linux
   needs: []
+  interruptible: true
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
     - if: '$CI_PIPELINE_SOURCE == "web"'
@@ -39,8 +40,8 @@ check:upstream-versions:
             "${UPSTREAM_TAG_PATTERN:-}" 2>/dev/null || true)
 
         if [ -z "${LATEST}" ]; then
-          echo "[WARN] Could not determine upstream version for ${PACKAGE_NAME}, skipping"
-          continue
+          echo "[ERROR] Could not determine upstream version for ${PACKAGE_NAME}. Check scripts/check-upstream.sh or package.env."
+          exit 1
         fi
 
         for arch in ${SUPPORTED_ARCHES}; do

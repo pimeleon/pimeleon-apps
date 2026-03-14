@@ -1,5 +1,6 @@
 #!/bin/bash
 # Common functions for Pimeleon build scripts
+# Version: 1.0.1
 set -E
 # Ensure a robust system path is available to all scripts
 export PATH="/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"

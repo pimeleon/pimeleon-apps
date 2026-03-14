@@ -24,6 +24,12 @@ cleanup_handler() {
     fi
     # On failure or interruption, remove the specific build directory to prevent stale artifacts
     if [[ $exit_code -ne 0 ]]; then
+        if [[ -f "logs/${PKG_NAME}-${TARGET_ARCH}.log" ]]; then
+            log_error "Build failed! Last 100 lines of logs/${PKG_NAME}-${TARGET_ARCH}.log:"
+            echo "--------------------------------------------------------------------------------"
+            tail -n 100 "logs/${PKG_NAME}-${TARGET_ARCH}.log"
+            echo "--------------------------------------------------------------------------------"
+        fi
         log_warn "Removing stalled build directory for ${PKG_NAME}..."
         safe_rm "build/build-${PKG_NAME}" || true
     fi
@@ -69,7 +75,11 @@ docker cp "packages/${PKG_NAME}/." "${CONTAINER_ID}:/package/"
 
 # 3. Execute Build (Start and Attach)
 log_info "Logging build output to logs/${PKG_NAME}-${TARGET_ARCH}.log"
-docker start -a "${CONTAINER_ID}" 2>&1 | tee "logs/${PKG_NAME}-${TARGET_ARCH}.log"
+if [[ "${QUIET:-0}" == "1" ]]; then
+    docker start -a "${CONTAINER_ID}" > "logs/${PKG_NAME}-${TARGET_ARCH}.log" 2>&1
+else
+    docker start -a "${CONTAINER_ID}" 2>&1 | tee "logs/${PKG_NAME}-${TARGET_ARCH}.log"
+fi
 
 # 4. Extract Results
 log_info "Extracting results..."

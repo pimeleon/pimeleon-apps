@@ -8,12 +8,13 @@ SHELL := /bin/bash
 TARGET_ARCH ?= armhf
 SOURCES ?= github
 APT_PROXY ?=
+QUIET ?= 0
 
 # Get the current directory for absolute paths in traps
 PROJECT_ROOT = $(CURDIR)
 
 # Export all variables to subshells
-export TARGET_ARCH SOURCES APT_PROXY
+export TARGET_ARCH SOURCES APT_PROXY QUIET
 
 # Parse proxy variables for docker build
 ifneq ($(APT_PROXY),)
@@ -58,7 +59,7 @@ factory-init: refresh-tools
 	@echo "Initializing pimeleon-factory-$(TARGET_ARCH) environment..."
 	@echo "Proxy settings: $(if $(PROXY_ARGS),$(PROXY_ARGS),none)"
 	@trap "$(PROJECT_ROOT)/scripts/clean-docker.sh --clean-mounts; exit 1" INT TERM
-	docker build --no-cache $(PROXY_ARGS) -t pimeleon-builder-$(TARGET_ARCH):latest \
+	docker build --no-cache $(if $(filter 1,$(QUIET)),--quiet,) $(PROXY_ARGS) -t pimeleon-builder-$(TARGET_ARCH):latest \
 		-f containers/builder-$(TARGET_ARCH)/Dockerfile .
 
 compile-tor:

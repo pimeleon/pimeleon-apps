@@ -95,9 +95,7 @@ process_package() {
                 download_and_cache_tarball "${PACKAGE_NAME}" "${latest_version}" "${url}" "${tarball}"
                 ;;
             privoxy)
-                local tarball="privoxy-${latest_version}-stable-src.tar.gz"
-                local url="https://www.privoxy.org/sf-download-mirror/Sources/${latest_version}%20(stable)/${tarball}"
-                download_and_cache_tarball "${PACKAGE_NAME}" "${latest_version}" "${url}" "${tarball}"
+                log_info "Package ${PACKAGE_NAME} uses official Git repository, skipping registry upload for now."
                 ;;
             pihole-FTL)
                 log_info "Package ${PACKAGE_NAME} uses git clone, skipping registry upload for now."

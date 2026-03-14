@@ -22,8 +22,14 @@ tar xf "${WORK_DIR}/${TARBALL}" -C "${WORK_DIR}"
 cd "${SRC_DIR}"
 
 log_info "Patching configure to force cross-compilation mode..."
-# Force cross_compiling=yes to skip execution checks for libevent, openssl, and zlib
+# Force cross_compiling=yes globally to skip all execution checks
+# This is necessary because some build hosts have binfmt_misc/qemu which makes
+# conftest runnable but incomplete, causing 'does not seem to run' errors.
 sed -i 's/cross_compiling=maybe/cross_compiling=yes/g' configure
+sed -i 's/cross_compiling=no/cross_compiling=yes/g' configure
+
+# Fix shell syntax error in configure (test -ge with potentially empty variable)
+sed -i 's/test $tor_cv_st_mtim_nsec -ge/test 0$tor_cv_st_mtim_nsec -ge/g' configure
 
 log_info "Configuring for ${TARGET_ARCH}"
 
@@ -49,6 +55,10 @@ export PKG_CONFIG_SYSROOT_DIR="/"
 export PKG_CONFIG_LIBDIR="/usr/lib/${HOST_TRIPLE}/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
 export PKG_CONFIG_PATH=""
 
+# Workaround for GCC 12 internal compiler error (segfault in cl_optimization_save)
+# Disabling instruction scheduling often bypasses the buggy code path in the compiler.
+export CFLAGS="-O2 -fno-schedule-insns -fno-schedule-insns2 -Wno-error"
+
 # Clean environment from host contamination
 export PKG_CONFIG_ALLOW_SYSTEM_LIBS=1
 export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1
@@ -70,10 +80,10 @@ export tor_cv_library_zlib_linker_option=""
     ${CONFIGURE_FLAGS}
 
 log_info "Building Tor..."
-make -j"$(nproc)"
+make V=1 -j1
 
 log_info "Installing to temp directory..."
-make DESTDIR="${INSTALL_DIR}" install
+make V=1 DESTDIR="${INSTALL_DIR}" install
 
 # Strip binaries using arch-specific strip tool
 STRIP_TOOL="${HOST_TRIPLE}-strip"

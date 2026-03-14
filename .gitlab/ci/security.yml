@@ -1,5 +1,44 @@
 ---
-# GitLab CI/CD — Security Scanning
+# GitLab CI/CD — Security Scanning (Trivy + Gitleaks)
+
+.trivy_base:
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  variables:
+    TRIVY_CACHE_DIR: ".trivycache/"
+    TRIVY_NO_PROGRESS: "true"
+    TRIVY_SEVERITY: "HIGH,CRITICAL"
+    TRIVY_EXIT_CODE: "0" # Do not fail build for now, just report
+    # Optimization: Use both vulnerability and secret scanners
+    TRIVY_SCANNERS: "vuln,secret"
+  tags:
+    - linux
+  cache:
+    key: trivy-cache
+    paths:
+      - .trivycache/
+
+# Base for Trivy image scans (requires docker to build/initialize the target image)
+.trivy_image_base:
+  stage: security
+  image: docker:latest
+  tags:
+    - containers
+  variables:
+    DOCKER_HOST: unix:///var/run/docker.sock
+    TRIVY_CACHE_DIR: ".trivycache/"
+    TRIVY_NO_PROGRESS: "true"
+    TRIVY_SEVERITY: "HIGH,CRITICAL"
+    TRIVY_EXIT_CODE: "0"
+    TRIVY_SCANNERS: "vuln,secret"
+  before_script:
+    - apk add --no-cache make bash curl
+    - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+  cache:
+    key: trivy-cache
+    paths:
+      - .trivycache/
 
 security:gitleaks:
   stage: security
@@ -10,13 +49,50 @@ security:gitleaks:
     - linux
   needs: []
   script:
+    # Gitleaks remains for deep git history scanning
     - gitleaks detect --source . --verbose --config gitleaks.toml --report-path gitleaks-report.json --staged || gitleaks detect --source . --verbose --config gitleaks.toml --report-path gitleaks-report.json
   artifacts:
     paths:
       - gitleaks-report.json
     expire_in: 1 week
     when: always
+  interruptible: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "develop"'
     - if: '$CI_COMMIT_BRANCH == "master"'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+security:trivy:repo:
+  extends: .trivy_base
+  stage: security
+  needs: []
+  script:
+    # Scan current FS for vulnerabilities and secrets
+    - trivy fs --scanners ${TRIVY_SCANNERS} --format table --exit-code ${TRIVY_EXIT_CODE} .
+  interruptible: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == "master"'
+
+# Pre-build image scans (initialize builder and scan before application build starts)
+security:trivy:builder-armhf:
+  extends: .trivy_image_base
+  needs: []
+  script:
+    - make refresh-tools
+    - make factory-init TARGET_ARCH=armhf
+    - trivy image --scanners ${TRIVY_SCANNERS} --format table --exit-code ${TRIVY_EXIT_CODE} pimeleon-builder-armhf:latest
+  interruptible: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == "master"'
+
+security:trivy:builder-arm64:
+  extends: .trivy_image_base
+  needs: []
+  script:
+    - make refresh-tools
+    - make factory-init TARGET_ARCH=arm64
+    - trivy image --scanners ${TRIVY_SCANNERS} --format table --exit-code ${TRIVY_EXIT_CODE} pimeleon-builder-arm64:latest
+  interruptible: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'

@@ -92,7 +92,7 @@ cmake -B build \
     -DLIBMATH=m \
 
 log_info "Building pihole-FTL..."
-cmake --build build --verbose -- -j1
+cmake --build build -- -j1
 
 log_info "Installing binaries..."
 cp build/pihole-FTL "${INSTALL_DIR}/usr/bin/"

@@ -1,0 +1,9 @@
+# .dockerignore
+.git
+output/
+logs/
+build/
+copywriter-agent/
+*.skill
+*.tar.gz
+*.sha256

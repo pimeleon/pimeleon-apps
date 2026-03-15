@@ -16,8 +16,9 @@ if [[ "${UPSTREAM_REPO}" == *.git ]]; then
     log_info "Cloning Privoxy from ${UPSTREAM_REPO}..."
     rm -rf "${SRC_DIR}"
     # Git tags use underscores: v_4_1_0
+    # Note: --depth 1 is omitted because upstream server uses legacy HTTP transport
     TAG_NAME="v_$(echo ${VERSION} | tr '.' '_')"
-    git clone --depth 1 --branch "${TAG_NAME}" "${UPSTREAM_REPO}" "${SRC_DIR}"
+    git clone --branch "${TAG_NAME}" "${UPSTREAM_REPO}" "${SRC_DIR}"
 else
     TARBALL="privoxy-${VERSION}-stable-src.tar.gz"
     DIST_URL="https://www.privoxy.org/sf-download-mirror/Sources/${VERSION}%20(stable)/${TARBALL}"

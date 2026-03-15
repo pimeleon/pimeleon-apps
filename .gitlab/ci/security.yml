@@ -55,7 +55,7 @@ security:gitleaks:
     paths:
       - gitleaks-report.json
     expire_in: 1 week
-    when: always
+    when: on_success
   interruptible: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "develop"'

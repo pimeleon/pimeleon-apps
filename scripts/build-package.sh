@@ -42,7 +42,21 @@ if [[ $# -lt 1 ]]; then
 fi
 
 PKG_NAME="$1"
-PKG_VERSION="${2:-latest}"
+PKG_VERSION="${2:-}"
+
+# JIT Version Resolution
+if [[ -z "${PKG_VERSION}" ]] || [[ "${PKG_VERSION}" == "latest" ]]; then
+    log_info "No version specified for ${PKG_NAME}. Resolving JIT from upstream..."
+    # shellcheck source=/dev/null
+    source "packages/${PKG_NAME}/package.env"
+    PKG_VERSION=$(bash scripts/check-upstream.sh \
+        "${UPSTREAM_REPO}" \
+        "${UPSTREAM_TYPE}" \
+        "${UPSTREAM_GITLAB_HOST:-gitlab.com}" \
+        "${UPSTREAM_TAG_PREFIX:-}" \
+        "${UPSTREAM_TAG_PATTERN:-}" 2>/dev/null || echo "${PACKAGE_VERSION}")
+    log_info "Resolved ${PKG_NAME} to version ${PKG_VERSION}"
+fi
 
 log_section "Building ${PKG_NAME} (${PKG_VERSION}) [Arch: ${TARGET_ARCH}, Source: ${SOURCES}]"
 

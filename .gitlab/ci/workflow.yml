@@ -3,7 +3,6 @@
 stages:
   - security
   - lint
-  - check
   - build
   - publish
 

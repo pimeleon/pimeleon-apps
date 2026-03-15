@@ -23,8 +23,6 @@ cd "${SRC_DIR}"
 
 log_info "Patching configure to force cross-compilation mode..."
 # Force cross_compiling=yes globally to skip all execution checks
-# This is necessary because some build hosts have binfmt_misc/qemu which makes
-# conftest runnable but incomplete, causing 'does not seem to run' errors.
 sed -i 's/cross_compiling=maybe/cross_compiling=yes/g' configure
 sed -i 's/cross_compiling=no/cross_compiling=yes/g' configure
 
@@ -37,34 +35,38 @@ log_info "Configuring for ${TARGET_ARCH}"
 # CC is arm-linux-gnueabihf-gcc or aarch64-linux-gnu-gcc
 HOST_TRIPLE=${CC%-gcc}
 
-# Workaround for Tor's non-multiarch-aware static library lookup.
-# It expects static libraries in $DIR/lib but Debian multiarch puts them in $DIR/lib/$HOST_TRIPLE.
-DEPS_DIR="${WORK_DIR}/tor-deps"
-log_info "Creating multiarch-aware dependency directory at ${DEPS_DIR}..."
-mkdir -p "${DEPS_DIR}/lib"
-ln -snf /usr/include "${DEPS_DIR}/include"
-# Link all static libraries from multiarch path to the flat lib dir Tor expects
+log_info "Build Environment: CC=${CC}, HOST_TRIPLE=${HOST_TRIPLE}, TARGET_ARCH=${TARGET_ARCH}"
+
+# Create an isolated dependency prefix to satisfy Tor's static build requirements
+# and bypass standard system path detection.
+DEPS_DIR="${WORK_DIR}/isolated-deps"
+mkdir -p "${DEPS_DIR}/lib" "${DEPS_DIR}/include"
+
+log_info "Creating isolated dependency directory at ${DEPS_DIR}..."
+# Link static libraries from multiarch path to the flat lib dir Tor expects
 for lib in /usr/lib/${HOST_TRIPLE}/*.a; do
     [ -e "$lib" ] || continue
     ln -sf "$lib" "${DEPS_DIR}/lib/"
 done
 
+# Link specific headers to avoid linking the whole /usr/include
+# Tor needs event2, openssl, and zlib
+ln -snf /usr/include/event2 "${DEPS_DIR}/include/event2"
+ln -snf /usr/include/openssl "${DEPS_DIR}/include/openssl"
+cp /usr/include/zlib.h /usr/include/zconf.h "${DEPS_DIR}/include/" 2>/dev/null || true
+
 # Set cross-compilation environment variables for pkg-config
 export PKG_CONFIG="${HOST_TRIPLE}-pkg-config"
 export PKG_CONFIG_SYSROOT_DIR="/"
-export PKG_CONFIG_LIBDIR="/usr/lib/${HOST_TRIPLE}/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
+# Block pkg-config from finding system libraries to ensure our isolated paths are used
+mkdir -p "${DEPS_DIR}/pkgconfig"
+export PKG_CONFIG_LIBDIR="${DEPS_DIR}/pkgconfig"
 export PKG_CONFIG_PATH=""
 
-# Workaround for GCC 12 internal compiler error (segfault in cl_optimization_save)
-# Disabling instruction scheduling often bypasses the buggy code path in the compiler.
+# Workaround for GCC 12 internal compiler error
 export CFLAGS="-O2 -fno-schedule-insns -fno-schedule-insns2 -Wno-error"
 
-# Clean environment from host contamination
-export PKG_CONFIG_ALLOW_SYSTEM_LIBS=1
-export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1
-
 log_info "Using HOST_TRIPLE: ${HOST_TRIPLE}"
-log_info "Using PKG_CONFIG: $(command -v "${PKG_CONFIG}")"
 
 # Pre-seed configure cache to bypass 'runnable' checks for cross-compiled static libs.
 # Tor's configure tries to run a test program to verify the library, which fails on x86_64 host.

@@ -53,7 +53,7 @@ build:all:
       - output/
       - logs/
     expire_in: 1 week
-    when: always
+    when: on_success
   rules:
     # Run on direct push or merge to master
     - if: '$CI_COMMIT_BRANCH == "master"'

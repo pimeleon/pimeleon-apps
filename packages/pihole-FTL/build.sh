@@ -43,11 +43,6 @@ if [[ ! -f "${SRC_DIR}/src/dnsmasq/CMakeLists.txt" ]]; then
 fi
 
 cd "${SRC_DIR}"
-# Apply stability patches to FTL source code
-# Stub out x509.c to bypass MbedTLS 3.x incompatibilities
-mkdir -p build/src
-printf "#define FTL_VERSION \"%s\"\n#define FTL_ARCH \"%s\"\n#define FTL_HASH \"pimeleon\"\n#define FTL_DATE \"%s\"\n" "${VERSION}" "${TARGET_ARCH}" "$(date -u)" > build/src/FTL_version.h
-# Strip hardcoded -Werror from all CMake files to prevent GCC 12 warning crashes
 
 # Determine cross-compilation triple from CC
 # CC is arm-linux-gnueabihf-gcc or aarch64-linux-gnu-gcc
@@ -74,8 +69,11 @@ bash /package/patch-sources.sh "${SRC_DIR}"
 # Persist CMakeLists.txt for analysis
 log_info "Persisting configuration for analysis..."
 cp src/CMakeLists.txt "${LOGS_DIR}/pihole-CMakeLists.txt" 2>/dev/null || true
-# Clear stale CMake cache to prevent path mismatch errors
-rm -rf build/CMakeCache.txt
+# Clear stale CMake build directory to prevent cross-arch compiler contamination
+rm -rf build
+mkdir -p build/src
+# Generate FTL version header (must be after build/ cleanup)
+printf "#define FTL_VERSION \"%s\"\n#define FTL_ARCH \"%s\"\n#define FTL_HASH \"pimeleon\"\n#define FTL_DATE \"%s\"\n" "${VERSION}" "${TARGET_ARCH}" "$(date -u)" > build/src/FTL_version.h
 cmake -B build \
     -DCMAKE_C_COMPILER="${CC}" \
     -DCMAKE_CXX_COMPILER="${CC%-gcc}-g++" \

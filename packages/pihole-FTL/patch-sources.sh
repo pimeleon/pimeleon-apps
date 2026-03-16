@@ -53,12 +53,8 @@ if [[ -f "src/config/password.c" ]]; then
     echo "// Neutralized" > src/config/password.c
 fi
 
-# 5. Strip -Werror and hardcoded compiler paths
-find . -name "CMakeLists.txt" -o -name "*.make" -o -name "Makefile" -print0 | while IFS= read -r -d '' f; do
-    # Remove hardcoded arch-specific compilers
-    sed -i 's|/usr/bin/aarch64-linux-gnu-gcc|gcc|g' "$f"
-    sed -i 's|aarch64-linux-gnu-gcc|gcc|g' "$f"
-    # Also remove -Werror
+# 5. Strip -Werror
+find . -name "CMakeLists.txt" -print0 | while IFS= read -r -d '' f; do
     sed -i "s/-Werror//g" "$f"
 done
 

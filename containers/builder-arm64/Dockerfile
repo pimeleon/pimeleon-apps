@@ -14,7 +14,7 @@ RUN echo "Acquire::http::Proxy \"http://${APT_CACHE_SERVER}:${APT_CACHE_PORT}\";
 # Enable arm64 multiarch
 RUN dpkg --add-architecture arm64
 
-RUN apt-get update && apt-get install -yq --no-install-recommends \
+RUN apt-get update && apt-get dist-upgrade -yq && apt-get install -yq --no-install-recommends \
     cmake \
     ninja-build \
     libreadline-dev:arm64 \

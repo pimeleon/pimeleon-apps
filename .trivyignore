@@ -1,0 +1,24 @@
+# Pimeleon Builder Vulnerability Suppressions
+# These CVEs affect upstream Debian packages but either have no available fix
+# in Bookworm or do not impact the integrity of cross-compiled binaries.
+
+# Git: Code execution / file writes (Local builder context limits risk)
+CVE-2025-48384
+CVE-2025-48385
+
+# libarchive: Infinite Loop / DoS
+CVE-2026-4111
+
+# glibc: Heap corruption via memalign
+CVE-2026-0861
+
+# libexpat: Integer overflow / DoS
+CVE-2026-25210
+
+# openldap: Null pointer dereference
+CVE-2023-2953
+
+# Mbed TLS: Use-after-free / Integer Overflow / Null pointer
+CVE-2025-47917
+CVE-2024-23775
+CVE-2025-48965

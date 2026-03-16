@@ -22,7 +22,8 @@ tar xf "${WORK_DIR}/${TARBALL}" -C "${WORK_DIR}"
 cd "${SRC_DIR}"
 
 log_info "Patching configure to force cross-compilation mode..."
-# Force cross_compiling=yes globally to skip all execution checks
+# Force cross_compiling=yes globally to skip all execution checks.
+# This prevents 'does not seem to run' errors when linking static libraries.
 sed -i 's/cross_compiling=maybe/cross_compiling=yes/g' configure
 sed -i 's/cross_compiling=no/cross_compiling=yes/g' configure
 
@@ -37,17 +38,14 @@ HOST_TRIPLE=${CC%-gcc}
 
 log_info "Build Environment: CC=${CC}, HOST_TRIPLE=${HOST_TRIPLE}, TARGET_ARCH=${TARGET_ARCH}"
 
-# Workaround for Tor's non-multiarch-aware static library lookup.
-# It expects static libraries in $DIR/lib but Debian multiarch puts them in $DIR/lib/$HOST_TRIPLE.
+# Hardened Multiarch Support:
+# Tor's configure is not multiarch-aware for static linking. It expects static libs in DIR/lib.
+# We create a virtual prefix that symlinks the entire multiarch directory to 'lib'.
 DEPS_DIR="${WORK_DIR}/tor-deps"
 log_info "Creating multiarch-aware dependency directory at ${DEPS_DIR}..."
-mkdir -p "${DEPS_DIR}/lib"
+mkdir -p "${DEPS_DIR}"
 ln -snf /usr/include "${DEPS_DIR}/include"
-# Link all static libraries from multiarch path to the flat lib dir Tor expects
-for lib in /usr/lib/${HOST_TRIPLE}/*.a; do
-    [ -e "$lib" ] || continue
-    ln -sf "$lib" "${DEPS_DIR}/lib/"
-done
+ln -snf "/usr/lib/${HOST_TRIPLE}" "${DEPS_DIR}/lib"
 
 # Set cross-compilation environment variables for pkg-config
 export PKG_CONFIG="${HOST_TRIPLE}-pkg-config"
@@ -60,27 +58,27 @@ export PKG_CONFIG_ALLOW_SYSTEM_LIBS=1
 export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1
 
 # Workaround for GCC 12 internal compiler error (segfault in cl_optimization_save)
-# Disabling instruction scheduling often bypasses the buggy code path in the compiler.
-export CFLAGS="-O2 -fno-schedule-insns -fno-schedule-insns2 -Wno-error"
+# Downgrading to -O1 and disabling instruction scheduling to avoid buggy compiler paths.
+export CFLAGS="-O1 -fno-schedule-insns -fno-schedule-insns2 -Wno-error"
 
 log_info "Using HOST_TRIPLE: ${HOST_TRIPLE}"
 log_info "Using PKG_CONFIG: $(command -v "${PKG_CONFIG}")"
 
-# Pre-seed configure cache to bypass 'runnable' checks for cross-compiled static libs.
-# Tor's configure tries to run a test program to verify the library, which fails on x86_64 host.
-export tor_cv_library_libevent_linker_option=""
-export tor_cv_library_openssl_linker_option=""
-export tor_cv_library_zlib_linker_option=""
-
+# Pre-seed configure cache to ensure detected paths are never '(system)'.
+# This bypasses the error: "You must specify an explicit --with-libevent-dir=x option when using --enable-static-libevent"
 ./configure \
     --host="${HOST_TRIPLE}" \
     --with-libevent-dir="${DEPS_DIR}" \
     --with-openssl-dir="${DEPS_DIR}" \
     --with-zlib-dir="${DEPS_DIR}" \
+    tor_cv_library_libevent_dir="${DEPS_DIR}" \
+    tor_cv_library_openssl_dir="${DEPS_DIR}" \
+    tor_cv_library_zlib_dir="${DEPS_DIR}" \
     ${CONFIGURE_FLAGS}
 
 log_info "Building Tor..."
-make V=1 -j1
+# Cap parallelism to ensure stability on small CI runners
+make V=1 -j2
 
 log_info "Installing to temp directory..."
 make V=1 DESTDIR="${INSTALL_DIR}" install
@@ -101,4 +99,4 @@ tar czf "${OUTPUT_ARCHIVE}" -C "${INSTALL_DIR}" ${OUTPUT_INCLUDES}
 
 # Generate checksum
 sha256sum "${OUTPUT_ARCHIVE}" | tee "${OUTPUT_ARCHIVE}.sha256"
-log_info "Packed: ${OUTPUT_ARCHIVE}"
+log_success "Build complete: ${OUTPUT_ARCHIVE}"

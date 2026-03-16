@@ -43,7 +43,7 @@
 security:gitleaks:
   stage: security
   image:
-    name: zricethezav/gitleaks:latest
+    name: gitleaks/gitleaks:latest
     entrypoint: [""]
   tags:
     - linux

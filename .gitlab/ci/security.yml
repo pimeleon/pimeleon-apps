@@ -63,6 +63,7 @@ security:gitleaks:
   rules:
     - if: '$CI_COMMIT_BRANCH == "develop"'
     - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
 
 security:trivy:repo:
   extends: .trivy_base
@@ -75,6 +76,7 @@ security:trivy:repo:
   rules:
     - if: '$CI_COMMIT_BRANCH == "develop"'
     - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
 
 # Pre-build image scans (initialize builder and scan before application build starts)
 security:trivy:builder-armhf:
@@ -88,6 +90,7 @@ security:trivy:builder-armhf:
   rules:
     - if: '$CI_COMMIT_BRANCH == "develop"'
     - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
 
 security:trivy:builder-arm64:
   extends: .trivy_image_base
@@ -100,3 +103,4 @@ security:trivy:builder-arm64:
   rules:
     - if: '$CI_COMMIT_BRANCH == "develop"'
     - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'

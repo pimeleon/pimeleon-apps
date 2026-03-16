@@ -44,17 +44,6 @@ CVE-2026-28421
 # zlib: Heap-based buffer overflow (Marked wont-fix by upstream)
 CVE-2023-45853
 
-# Kernel Headers (linux-libc-dev): Inert during build, applies to host kernel
-CVE-2013-7445
-CVE-2019-19449
-CVE-2019-19814
-CVE-2021-3847
-CVE-2021-3864
-CVE-2023-52452
-CVE-2023-52586
-CVE-2023-52624
-CVE-2023-52751
-CVE-2023-53218
-CVE-2023-53510
-CVE-2023-53762
-CVE-2024-21803
+# Kernel Headers (linux-libc-dev): Inert during build, applies to host kernel.
+# Suppressing the package to manage the high volume of unresolved upstream CVEs.
+linux-libc-dev

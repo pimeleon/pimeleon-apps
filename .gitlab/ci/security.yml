@@ -71,7 +71,14 @@ security:trivy:repo:
   needs: []
   script:
     # Scan current FS for vulnerabilities and secrets
+    # Generate report artifact but also stream to console for immediate feedback
+    - trivy fs --scanners ${TRIVY_SCANNERS} --format json --output trivy-repo-report.json .
     - trivy fs --scanners ${TRIVY_SCANNERS} --format table --exit-code ${TRIVY_EXIT_CODE} .
+  artifacts:
+    paths:
+      - trivy-repo-report.json
+    expire_in: 1 week
+    when: always
   interruptible: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "develop"'
@@ -85,7 +92,14 @@ security:trivy:builder-armhf:
   script:
     - make refresh-tools
     - make factory-init TARGET_ARCH=armhf
+    # Generate report artifact but also stream to console for immediate feedback
+    - trivy image --scanners ${TRIVY_SCANNERS} --format json --output trivy-builder-armhf-report.json pimeleon-builder-armhf:latest
     - trivy image --scanners ${TRIVY_SCANNERS} --format table --exit-code ${TRIVY_EXIT_CODE} pimeleon-builder-armhf:latest
+  artifacts:
+    paths:
+      - trivy-builder-armhf-report.json
+    expire_in: 1 week
+    when: always
   interruptible: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "develop"'
@@ -98,7 +112,14 @@ security:trivy:builder-arm64:
   script:
     - make refresh-tools
     - make factory-init TARGET_ARCH=arm64
+    # Generate report artifact but also stream to console for immediate feedback
+    - trivy image --scanners ${TRIVY_SCANNERS} --format json --output trivy-builder-arm64-report.json pimeleon-builder-arm64:latest
     - trivy image --scanners ${TRIVY_SCANNERS} --format table --exit-code ${TRIVY_EXIT_CODE} pimeleon-builder-arm64:latest
+  artifacts:
+    paths:
+      - trivy-builder-arm64-report.json
+    expire_in: 1 week
+    when: always
   interruptible: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "develop"'

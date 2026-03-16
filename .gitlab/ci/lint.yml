@@ -3,13 +3,13 @@
 
 lint:shell:
   stage: lint
-  image: koalaman/shellcheck-alpine:latest
+  image: alpine:latest
   tags:
     - linux
   needs: []
   interruptible: true
   script:
-    - apk add --no-cache jq python3 py3-pip bash
+    - apk add --no-cache shellcheck jq python3 py3-pip bash
     - python3 -m venv .venv && source .venv/bin/activate
     - pip install --no-cache-dir bashate semgrep
     - ./scripts/quality-benchmark.sh

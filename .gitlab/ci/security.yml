@@ -5,6 +5,7 @@
   image:
     name: aquasec/trivy:latest
     entrypoint: [""]
+  allow_failure: false
   variables:
     TRIVY_CACHE_DIR: ".trivycache/"
     TRIVY_NO_PROGRESS: "true"
@@ -23,6 +24,7 @@
 .trivy_image_base:
   stage: security
   image: docker:latest
+  allow_failure: false
   tags:
     - containers
   variables:
@@ -45,6 +47,7 @@ security:gitleaks:
   image:
     name: gitleaks/gitleaks:latest
     entrypoint: [""]
+  allow_failure: false
   tags:
     - linux
   needs: []

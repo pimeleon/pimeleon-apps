@@ -45,7 +45,7 @@
 security:gitleaks:
   stage: security
   image:
-    name: gitleaks/gitleaks:latest
+    name: ghcr.io/gitleaks/gitleaks:latest
     entrypoint: [""]
   allow_failure: false
   tags:

@@ -9,7 +9,7 @@
     TRIVY_CACHE_DIR: ".trivycache/"
     TRIVY_NO_PROGRESS: "true"
     TRIVY_SEVERITY: "HIGH,CRITICAL"
-    TRIVY_EXIT_CODE: "0" # Do not fail build for now, just report
+    TRIVY_EXIT_CODE: "1" # Fail build if HIGH or CRITICAL vulnerabilities are found
     # Optimization: Use both vulnerability and secret scanners
     TRIVY_SCANNERS: "vuln,secret"
   tags:
@@ -30,7 +30,7 @@
     TRIVY_CACHE_DIR: ".trivycache/"
     TRIVY_NO_PROGRESS: "true"
     TRIVY_SEVERITY: "HIGH,CRITICAL"
-    TRIVY_EXIT_CODE: "0"
+    TRIVY_EXIT_CODE: "1"
     TRIVY_SCANNERS: "vuln,secret"
   before_script:
     - apk add --no-cache make bash curl

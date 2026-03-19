@@ -1,0 +1,31 @@
+---
+# GitLab CI/CD — Builder Containers
+
+# Build and push builder Docker images when container sources change
+build:containers:
+  stage: prepare
+  image: docker:latest
+  services:
+    - docker:dind
+  tags:
+    - containers
+  variables:
+    DOCKER_HOST: unix:///var/run/docker.sock
+  rules:
+    # Trigger on direct push to develop or master if containers change
+    - if: '$CI_COMMIT_BRANCH == "develop" || $CI_COMMIT_BRANCH == "master"'
+      changes:
+        - containers/**/*
+        - scripts/update-tools.sh
+        - versions/tools.yml
+        - scripts/publish-builders.sh
+    # Also trigger on MRs targeting master
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
+      changes:
+        - containers/**/*
+        - scripts/update-tools.sh
+        - versions/tools.yml
+        - scripts/publish-builders.sh
+  script:
+    - chmod +x scripts/publish-builders.sh
+    - ./scripts/publish-builders.sh

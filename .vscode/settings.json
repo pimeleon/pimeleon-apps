@@ -1,0 +1,16 @@
+{
+    "shellcheck.enable": true,
+    "shellcheck.run": "onSave",
+    "shellcheck.exclude": ["SC1091", "SC2155", "SC2086"],
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "editor.formatOnSave": true,
+    "yaml.schemas": {
+        "https://json.schemastore.org/gitlab-ci": ".gitlab-ci.yml",
+        "https://json.schemastore.org/gitlab-ci": ".gitlab/ci/*.yml"
+    },
+    "yaml.format.enable": true,
+    "editor.codeActionsOnSave": {
+        "source.fixAll.shellcheck": "explicit"
+    }
+}

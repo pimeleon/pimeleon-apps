@@ -19,7 +19,7 @@
     paths:
       - .trivycache/
 
-# Base for Trivy image scans (requires docker to build/initialize the target image)
+# Base for Trivy image scans
 .trivy_image_base:
   stage: security
   image: docker:latest
@@ -33,7 +33,10 @@
     TRIVY_SEVERITY: "HIGH,CRITICAL"
     TRIVY_SCANNERS: "vuln,secret"
   before_script:
-    - apk add --no-cache make bash curl
+    - apk add --no-cache curl
+    # Login to registry to pull the image
+    - echo "${CI_JOB_TOKEN}" | docker login "${CI_REGISTRY}" -u gitlab-ci-token --password-stdin
+    # Download Trivy binary
     - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
   cache:
     key: trivy-cache
@@ -48,7 +51,6 @@ security:gitleaks:
   allow_failure: false
   tags:
     - linux
-  needs: []
   script:
     # Gitleaks remains for deep git history scanning
     - gitleaks detect --source . --verbose --config gitleaks.toml --report-path gitleaks-report.json --staged || gitleaks detect --source . --verbose --config gitleaks.toml --report-path gitleaks-report.json
@@ -66,7 +68,8 @@ security:gitleaks:
 security:trivy:repo:
   extends: .trivy_base
   stage: security
-  needs: []
+  tags:
+    - linux
   script:
     # Scan current FS for vulnerabilities and secrets
     # Generate report artifact but also stream to console for immediate feedback
@@ -82,16 +85,20 @@ security:trivy:repo:
     - if: '$CI_COMMIT_BRANCH == "master"'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
 
-# Pre-build image scans (initialize builder and scan before application build starts)
+# Pre-build image scans (Pull from registry and scan before application build starts)
 security:trivy:builder-armhf:
   extends: .trivy_image_base
-  needs: []
+  tags:
+    - containers
+  needs:
+    - job: build:containers
+      optional: true
   script:
-    - make refresh-tools
-    - make factory-init TARGET_ARCH=armhf
+    - IMAGE_NAME="${CI_REGISTRY_IMAGE}/builder-armhf:latest"
+    - docker pull "${IMAGE_NAME}"
     # Generate report artifact but also stream to console for immediate feedback
-    - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format json --output trivy-builder-armhf-report.json pimeleon-builder-armhf:latest
-    - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format table --exit-code 1 pimeleon-builder-armhf:latest
+    - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format json --output trivy-builder-armhf-report.json "${IMAGE_NAME}"
+    - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format table --exit-code 1 "${IMAGE_NAME}"
   artifacts:
     paths:
       - trivy-builder-armhf-report.json
@@ -104,13 +111,17 @@ security:trivy:builder-armhf:
 
 security:trivy:builder-arm64:
   extends: .trivy_image_base
-  needs: []
+  tags:
+    - containers
+  needs:
+    - job: build:containers
+      optional: true
   script:
-    - make refresh-tools
-    - make factory-init TARGET_ARCH=arm64
+    - IMAGE_NAME="${CI_REGISTRY_IMAGE}/builder-arm64:latest"
+    - docker pull "${IMAGE_NAME}"
     # Generate report artifact but also stream to console for immediate feedback
-    - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format json --output trivy-builder-arm64-report.json pimeleon-builder-arm64:latest
-    - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format table --exit-code 1 pimeleon-builder-arm64:latest
+    - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format json --output trivy-builder-arm64-report.json "${IMAGE_NAME}"
+    - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format table --exit-code 1 "${IMAGE_NAME}"
   artifacts:
     paths:
       - trivy-builder-arm64-report.json

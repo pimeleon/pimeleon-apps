@@ -1,0 +1,9 @@
+---
+# GitLab CI/CD — Stage Definitions
+stages:
+  - prepare
+  - security
+  - lint
+  - check
+  - build
+  - publish

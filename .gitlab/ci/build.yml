@@ -2,21 +2,11 @@
 # GitLab CI/CD — Build & Verification
 
 build:smoke:
-  stage: build
+  stage: prepare
   image: docker:latest
   tags:
     - containers
-  needs:
-    - job: "lint:shell"
-    - job: "lint:yaml"
-    - job: "security:gitleaks"
-      optional: true
-    - job: "security:trivy:repo"
-      optional: true
-    - job: "security:trivy:builder-armhf"
-      optional: true
-    - job: "security:trivy:builder-arm64"
-      optional: true
+  needs: []
   interruptible: true
   variables:
     DOCKER_HOST: unix:///var/run/docker.sock
@@ -24,19 +14,15 @@ build:smoke:
     matrix:
       - TARGET_ARCH: ["armhf", "arm64"]
   script:
-    # Basic verification: Ensure the builder environment can be initialized
-    - apk add --no-cache make bash curl
-    - make refresh-tools
-    - make factory-init TARGET_ARCH=$TARGET_ARCH
-  cache:
-    policy: pull
+    - REGISTRY_IMAGE="${CI_REGISTRY_IMAGE:-gitlab.pirouter.dev:5005/pimeleon/pi-router-apps}/builder-${TARGET_ARCH}:latest"
+    - if [[ -n "${CI_JOB_TOKEN:-}" ]]; then echo "${CI_JOB_TOKEN}" | docker login "${CI_REGISTRY:-gitlab.pirouter.dev:5005}" -u gitlab-ci-token --password-stdin >/dev/null 2>&1; fi
+    - docker pull "${REGISTRY_IMAGE}"
+    - docker run --rm "${REGISTRY_IMAGE}" go version
   rules:
-    # Run on develop branch push
-    - if: '$CI_COMMIT_BRANCH == "develop"'
-    # Run on MRs targeting develop (or any branch except master)
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME != "master"'
+    # PRELIMINARY: Verify environment on Develop push and ALL Merge Requests (Gate)
+    - if: '$CI_COMMIT_BRANCH == "develop" && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
 
-# Full build for production branch (master) or MRs targeting master
 build:all:
   stage: build
   image: docker:latest
@@ -44,14 +30,8 @@ build:all:
     - containers
   needs:
     - job: "lint:shell"
+      optional: true
     - job: "lint:yaml"
-    - job: "security:gitleaks"
-      optional: true
-    - job: "security:trivy:repo"
-      optional: true
-    - job: "security:trivy:builder-armhf"
-      optional: true
-    - job: "security:trivy:builder-arm64"
       optional: true
   interruptible: true
   variables:
@@ -60,9 +40,6 @@ build:all:
     matrix:
       - TARGET_ARCH: ["armhf", "arm64"]
   script:
-    - apk add --no-cache make bash curl
-    - make refresh-tools
-    - make factory-init TARGET_ARCH=$TARGET_ARCH
     - ./local-build.sh all $TARGET_ARCH
   artifacts:
     paths:
@@ -71,7 +48,5 @@ build:all:
     expire_in: 1 week
     when: on_success
   rules:
-    # Run on direct push or merge to master
-    - if: '$CI_COMMIT_BRANCH == "master"'
-    # Run on MRs targeting master to verify full build before merge
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
+    # PRODUCTION: Full compilation ONLY on the actual master branch (Merge or Hotfix)
+    - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"'

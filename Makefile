@@ -96,6 +96,7 @@ compile-all: compile-tor compile-dns compile-hostapd compile-wpa_supplicant comp
 
 clean:
 	rm -rf output/*.tar.gz output/*.sha256
+	rm -rf build/
 
 lint:
 	./scripts/quality-benchmark.sh

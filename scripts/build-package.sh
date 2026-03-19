@@ -31,7 +31,8 @@ cleanup_handler() {
             echo "--------------------------------------------------------------------------------"
         fi
         log_warn "Removing stalled build directory for ${PKG_NAME}..."
-        safe_rm "build/build-${PKG_NAME}" || true
+        # Target the architecture-specific subdirectory
+        safe_rm "build/${TARGET_ARCH}/build-${PKG_NAME}" || true
     fi
     exit $exit_code
 }
@@ -62,12 +63,14 @@ log_section "Building ${PKG_NAME} (${PKG_VERSION}) [Arch: ${TARGET_ARCH}, Source
 
 # 1. Prepare Container (Command MUST be specified at creation)
 IMAGE="pimeleon-builder-${TARGET_ARCH}:latest"
-mkdir -p build logs
+# Isolate build path by architecture to prevent parallel build contamination
+LOCAL_BUILD_DIR="$(pwd)/build/${TARGET_ARCH}"
+mkdir -p "${LOCAL_BUILD_DIR}" logs
 CONTAINER_ID=$(docker create \
     --privileged \
     --user "$(id -u):$(id -g)" \
     -v /dev:/dev:rw \
-    -v "$(pwd)/build:/build" \
+    -v "${LOCAL_BUILD_DIR}:/build" \
     -v "$(pwd)/cache:/cache" \
     -v "$(pwd)/logs:/logs" \
     -e PACKAGE_NAME="${PKG_NAME}" \

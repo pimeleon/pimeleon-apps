@@ -27,5 +27,6 @@ build:containers:
         - versions/tools.yml
         - scripts/publish-builders.sh
   script:
+    - apk add --no-cache bash curl
     - chmod +x scripts/publish-builders.sh
     - ./scripts/publish-builders.sh

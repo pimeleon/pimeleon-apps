@@ -19,7 +19,10 @@ publish_builder() {
     # Ensure tools are cached for the build
     ./scripts/update-tools.sh
 
+    # Use registry image as cache source to re-use unchanged layers
     docker build \
+        --cache-from "${tag_latest}" \
+        --build-arg BUILDKIT_INLINE_CACHE=1 \
         --pull \
         -t "${tag_latest}" \
         -t "${tag_sha}" \

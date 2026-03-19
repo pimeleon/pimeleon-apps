@@ -10,9 +10,13 @@ build:smoke:
     - job: "lint:shell"
     - job: "lint:yaml"
     - job: "security:gitleaks"
+      optional: true
     - job: "security:trivy:repo"
+      optional: true
     - job: "security:trivy:builder-armhf"
+      optional: true
     - job: "security:trivy:builder-arm64"
+      optional: true
   interruptible: true
   variables:
     DOCKER_HOST: unix:///var/run/docker.sock
@@ -42,9 +46,13 @@ build:all:
     - job: "lint:shell"
     - job: "lint:yaml"
     - job: "security:gitleaks"
+      optional: true
     - job: "security:trivy:repo"
+      optional: true
     - job: "security:trivy:builder-armhf"
+      optional: true
     - job: "security:trivy:builder-arm64"
+      optional: true
   interruptible: true
   variables:
     DOCKER_HOST: unix:///var/run/docker.sock

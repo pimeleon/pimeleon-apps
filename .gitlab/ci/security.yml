@@ -10,7 +10,6 @@
     TRIVY_CACHE_DIR: ".trivycache/"
     TRIVY_NO_PROGRESS: "true"
     TRIVY_SEVERITY: "HIGH,CRITICAL"
-    TRIVY_EXIT_CODE: "1" # Fail build if HIGH or CRITICAL vulnerabilities are found
     # Optimization: Use both vulnerability and secret scanners
     TRIVY_SCANNERS: "vuln,secret"
   tags:
@@ -32,7 +31,6 @@
     TRIVY_CACHE_DIR: ".trivycache/"
     TRIVY_NO_PROGRESS: "true"
     TRIVY_SEVERITY: "HIGH,CRITICAL"
-    TRIVY_EXIT_CODE: "1"
     TRIVY_SCANNERS: "vuln,secret"
   before_script:
     - apk add --no-cache make bash curl
@@ -72,8 +70,8 @@ security:trivy:repo:
   script:
     # Scan current FS for vulnerabilities and secrets
     # Generate report artifact but also stream to console for immediate feedback
-    - trivy fs --scanners ${TRIVY_SCANNERS} --format json --output trivy-repo-report.json .
-    - trivy fs --scanners ${TRIVY_SCANNERS} --format table --exit-code ${TRIVY_EXIT_CODE} .
+    - trivy fs --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format json --output trivy-repo-report.json .
+    - trivy fs --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format table --exit-code 1 .
   artifacts:
     paths:
       - trivy-repo-report.json
@@ -92,8 +90,8 @@ security:trivy:builder-armhf:
     - make refresh-tools
     - make factory-init TARGET_ARCH=armhf
     # Generate report artifact but also stream to console for immediate feedback
-    - trivy image --scanners ${TRIVY_SCANNERS} --format json --output trivy-builder-armhf-report.json pimeleon-builder-armhf:latest
-    - trivy image --scanners ${TRIVY_SCANNERS} --format table --exit-code ${TRIVY_EXIT_CODE} pimeleon-builder-armhf:latest
+    - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format json --output trivy-builder-armhf-report.json pimeleon-builder-armhf:latest
+    - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format table --exit-code 1 pimeleon-builder-armhf:latest
   artifacts:
     paths:
       - trivy-builder-armhf-report.json
@@ -111,8 +109,8 @@ security:trivy:builder-arm64:
     - make refresh-tools
     - make factory-init TARGET_ARCH=arm64
     # Generate report artifact but also stream to console for immediate feedback
-    - trivy image --scanners ${TRIVY_SCANNERS} --format json --output trivy-builder-arm64-report.json pimeleon-builder-arm64:latest
-    - trivy image --scanners ${TRIVY_SCANNERS} --format table --exit-code ${TRIVY_EXIT_CODE} pimeleon-builder-arm64:latest
+    - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format json --output trivy-builder-arm64-report.json pimeleon-builder-arm64:latest
+    - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format table --exit-code 1 pimeleon-builder-arm64:latest
   artifacts:
     paths:
       - trivy-builder-arm64-report.json

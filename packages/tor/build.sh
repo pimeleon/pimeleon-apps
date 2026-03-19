@@ -60,8 +60,8 @@ export PKG_CONFIG_ALLOW_SYSTEM_LIBS=1
 export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1
 
 # Workaround for GCC 12 internal compiler error (segfault in cl_optimization_save)
-# Disabling instruction scheduling often bypasses the buggy code path in the compiler.
-export CFLAGS="-O2 -fno-schedule-insns -fno-schedule-insns2 -Wno-error"
+# Downgrading to -O1 and disabling instruction scheduling to avoid buggy compiler paths.
+export CFLAGS="-O1 -fno-schedule-insns -fno-schedule-insns2 -Wno-error"
 
 log_info "Using HOST_TRIPLE: ${HOST_TRIPLE}"
 log_info "Using PKG_CONFIG: $(command -v "${PKG_CONFIG}")"

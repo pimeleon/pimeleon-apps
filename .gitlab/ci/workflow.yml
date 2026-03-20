@@ -1,10 +1,16 @@
 ---
 # GitLab CI/CD — Global Pipeline Rules
+# Optimization: Prevents duplicate pipelines (Branch vs MR)
 workflow:
   rules:
-    # Run on all push events, merge requests, web triggers, and schedules
-    # Job-level 'rules' will further filter which jobs run in each context.
-    - if: '$CI_PIPELINE_SOURCE == "push"'
+    # 1. If an MR is open, only run the Merge Request pipeline.
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_PIPELINE_SOURCE == "web"'
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+
+    # 2. If no MR is open, run the branch pipeline for develop or master.
+    - if: '$CI_COMMIT_BRANCH == "develop" || $CI_COMMIT_BRANCH == "master"'
+
+    # 3. Run for web/scheduled triggers
+    - if: '$CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "schedule"'
+
+    # 4. Otherwise, skip (avoids redundant feature branch pipelines)
+    - when: never

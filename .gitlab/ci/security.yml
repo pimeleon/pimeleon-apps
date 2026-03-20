@@ -10,7 +10,6 @@
     TRIVY_CACHE_DIR: ".trivycache/"
     TRIVY_NO_PROGRESS: "true"
     TRIVY_SEVERITY: "HIGH,CRITICAL"
-    # Optimization: Use both vulnerability and secret scanners
     TRIVY_SCANNERS: "vuln,secret"
   tags:
     - linux
@@ -19,7 +18,6 @@
     paths:
       - .trivycache/
 
-# Base for Trivy image scans
 .trivy_image_base:
   stage: security
   image: docker:latest
@@ -34,9 +32,7 @@
     TRIVY_SCANNERS: "vuln,secret"
   before_script:
     - apk add --no-cache curl
-    # Login to registry to pull the image
     - echo "${CI_JOB_TOKEN}" | docker login "${CI_REGISTRY}" -u gitlab-ci-token --password-stdin
-    # Download Trivy binary
     - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
   cache:
     key: trivy-cache
@@ -52,7 +48,6 @@ security:gitleaks:
   tags:
     - linux
   script:
-    # Gitleaks remains for deep git history scanning
     - gitleaks detect --source . --verbose --config gitleaks.toml --report-path gitleaks-report.json --staged || gitleaks detect --source . --verbose --config gitleaks.toml --report-path gitleaks-report.json
   artifacts:
     paths:
@@ -61,9 +56,9 @@ security:gitleaks:
     when: on_success
   interruptible: true
   rules:
-    - if: '$CI_COMMIT_BRANCH == "develop"'
-    - if: '$CI_COMMIT_BRANCH == "master"'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    # PRELIMINARY: Only check secrets on Develop pushes and MRs targeting Develop
+    - if: '$CI_COMMIT_BRANCH == "develop" && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
 
 security:trivy:repo:
   extends: .trivy_base
@@ -71,8 +66,6 @@ security:trivy:repo:
   tags:
     - linux
   script:
-    # Scan current FS for vulnerabilities and secrets
-    # Generate report artifact but also stream to console for immediate feedback
     - trivy fs --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format json --output trivy-repo-report.json .
     - trivy fs --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format table --exit-code 1 .
   artifacts:
@@ -82,21 +75,20 @@ security:trivy:repo:
     when: always
   interruptible: true
   rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
+    # FINAL GATE: Check vulnerabilities on MRs to Master or direct Master push
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
+    - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"'
 
-# Pre-build image scans (Pull from registry and scan before application build starts)
-security:trivy:builder-armhf:
+security:scan-builder-armhf:
   extends: .trivy_image_base
   tags:
     - containers
   needs:
-    - job: build:containers
+    - job: build:builder-armhf
       optional: true
   script:
     - IMAGE_NAME="${CI_REGISTRY_IMAGE}/builder-armhf:latest"
     - docker pull "${IMAGE_NAME}"
-    # Generate report artifact but also stream to console for immediate feedback
     - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format json --output trivy-builder-armhf-report.json "${IMAGE_NAME}"
     - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format table --exit-code 1 "${IMAGE_NAME}"
   artifacts:
@@ -106,20 +98,20 @@ security:trivy:builder-armhf:
     when: always
   interruptible: true
   rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
+    # FINAL GATE: Check builder vulnerabilities on MRs to Master or direct Master push
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
+    - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"'
 
-security:trivy:builder-arm64:
+security:scan-builder-arm64:
   extends: .trivy_image_base
   tags:
     - containers
   needs:
-    - job: build:containers
+    - job: build:builder-arm64
       optional: true
   script:
     - IMAGE_NAME="${CI_REGISTRY_IMAGE}/builder-arm64:latest"
     - docker pull "${IMAGE_NAME}"
-    # Generate report artifact but also stream to console for immediate feedback
     - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format json --output trivy-builder-arm64-report.json "${IMAGE_NAME}"
     - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format table --exit-code 1 "${IMAGE_NAME}"
   artifacts:
@@ -129,5 +121,5 @@ security:trivy:builder-arm64:
     when: always
   interruptible: true
   rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
+    - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"'

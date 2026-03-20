@@ -62,7 +62,7 @@ fi
 log_section "Building ${PKG_NAME} (${PKG_VERSION}) [Arch: ${TARGET_ARCH}, Source: ${SOURCES}]"
 
 # 1. Prepare Container (Command MUST be specified at creation)
-if [[ -n "${CI_REGISTRY_IMAGE:-}" ]]; then 
+if [[ -n "${CI_REGISTRY_IMAGE:-}" ]]; then
     IMAGE="${CI_REGISTRY_IMAGE}/builder-${TARGET_ARCH}:latest"
 else
     IMAGE="pimeleon-builder-${TARGET_ARCH}:latest"
@@ -88,6 +88,7 @@ CONTAINER_ID=$(docker create \
     -e APT_CACHE_PORT="${APT_CACHE_PORT:-}" \
     -e GOCACHE=/build/.cache/go-build \
     -e GOMODCACHE=/build/.cache/go-mod \
+    -e HOME=/build \
     "${IMAGE}" /scripts/container-build.sh "${PKG_NAME}" "${PKG_VERSION}")
 
 # 2. Inject Code

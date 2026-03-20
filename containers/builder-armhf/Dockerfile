@@ -19,6 +19,7 @@ RUN apt-get update && apt-get dist-upgrade -yq && apt-get install -yq --no-insta
     ninja-build \
     libreadline-dev:armhf \
     libidn2-dev:armhf \
+    libidn11-dev:armhf \
     nettle-dev:armhf \
     libgmp-dev:armhf \
     libmbedtls-dev:armhf \

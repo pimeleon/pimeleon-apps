@@ -62,7 +62,12 @@ fi
 log_section "Building ${PKG_NAME} (${PKG_VERSION}) [Arch: ${TARGET_ARCH}, Source: ${SOURCES}]"
 
 # 1. Prepare Container (Command MUST be specified at creation)
-IMAGE="pimeleon-builder-${TARGET_ARCH}:latest"
+if [[ -n "${CI_REGISTRY_IMAGE:-}" ]]; then 
+    IMAGE="${CI_REGISTRY_IMAGE}/builder-${TARGET_ARCH}:latest"
+else
+    IMAGE="pimeleon-builder-${TARGET_ARCH}:latest"
+fi
+
 # Isolate build path by architecture to prevent parallel build contamination
 LOCAL_BUILD_DIR="$(pwd)/build/${TARGET_ARCH}"
 mkdir -p "${LOCAL_BUILD_DIR}" logs

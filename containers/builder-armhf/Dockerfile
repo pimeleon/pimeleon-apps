@@ -58,8 +58,10 @@ RUN apt-get update && apt-get dist-upgrade -yq && apt-get install -yq --no-insta
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Go toolchain for armhf cross-compilation
-COPY cache/tools/go*.tar.gz /usr/local/go.tar.gz
-RUN tar -C /usr/local -xzf /usr/local/go.tar.gz && rm /usr/local/go.tar.gz
+ARG GO_VERSION=1.24.13
+RUN curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o /usr/local/go.tar.gz \
+    && tar -C /usr/local -xzf /usr/local/go.tar.gz \
+    && rm /usr/local/go.tar.gz
 ENV PATH="/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 ENV GOTOOLCHAIN=local
 ENV GOARCH=arm

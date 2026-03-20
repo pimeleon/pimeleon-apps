@@ -14,8 +14,9 @@ build:smoke:
     matrix:
       - TARGET_ARCH: ["armhf", "arm64"]
   script:
+    - apk add --no-cache bash curl
     - REGISTRY_IMAGE="${CI_REGISTRY_IMAGE:-gitlab.pirouter.dev:5005/pimeleon/pi-router-apps}/builder-${TARGET_ARCH}:latest"
-    - if [[ -n "${CI_JOB_TOKEN:-}" ]]; then echo "${CI_JOB_TOKEN}" | docker login "${CI_REGISTRY:-gitlab.pirouter.dev:5005}" -u gitlab-ci-token --password-stdin >/dev/null 2>&1; fi
+    - if [ -n "${CI_JOB_TOKEN:-}" ]; then echo "${CI_JOB_TOKEN}" | docker login "${CI_REGISTRY:-gitlab.pirouter.dev:5005}" -u gitlab-ci-token --password-stdin >/dev/null 2>&1; fi
     - docker pull "${REGISTRY_IMAGE}"
     - docker run --rm "${REGISTRY_IMAGE}" go version
   rules:
@@ -40,6 +41,8 @@ build:all:
     matrix:
       - TARGET_ARCH: ["armhf", "arm64"]
   script:
+    - apk add --no-cache bash curl
+    - chmod +x local-build.sh
     - ./local-build.sh all $TARGET_ARCH
   artifacts:
     paths:
@@ -50,3 +53,43 @@ build:all:
   rules:
     # PRODUCTION: Full compilation ONLY on the actual master branch (Merge or Hotfix)
     - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"'
+
+# Template for builder image creation
+.build_builder_base:
+  stage: prepare
+  image: docker:latest
+  services:
+    - docker:dind
+  tags:
+    - containers
+  variables:
+    DOCKER_HOST: unix:///var/run/docker.sock
+  rules:
+    # 1. Always run on master (ensure production images are fresh/pushed)
+    - if: '$CI_COMMIT_BRANCH == "master"'
+
+    # 2. On develop or other branches: Only run if builder sources actually changed
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      changes:
+        - containers/**/*
+        - scripts/update-tools.sh
+        - versions/tools.yml
+        - scripts/publish-builders.sh
+
+    # 3. Always run on manual trigger from web/schedule
+    - if: '$CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "schedule"'
+
+  script:
+    - apk add --no-cache bash curl
+    - chmod +x scripts/publish-builders.sh
+    - ./scripts/publish-builders.sh $TARGET_ARCH
+
+build:builder-armhf:
+  extends: .build_builder_base
+  variables:
+    TARGET_ARCH: "armhf"
+
+build:builder-arm64:
+  extends: .build_builder_base
+  variables:
+    TARGET_ARCH: "arm64"

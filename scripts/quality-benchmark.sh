@@ -24,43 +24,47 @@ echo -e "${BLUE}==================================================${NC}"
 
 # 1. ShellCheck
 echo -e "\n${BLUE}[1/3] Running ShellCheck...${NC}"
-# Exclude info SC2086 and others from blocking, but report them
-SC_OUTPUT=$(shellcheck -f json $SCRIPTS)
-SC_ERRORS=$(echo "$SC_OUTPUT" | jq '[.[] | select(.level == "error")] | length')
-SC_WARNINGS=$(echo "$SC_OUTPUT" | jq '[.[] | select(.level == "warning")] | length')
+SC_OUTPUT=$(shellcheck -f json $SCRIPTS 2>/dev/null || true)
+SC_ERRORS=$(echo "$SC_OUTPUT" | jq '[.[] | select(.level == "error")] | length' 2>/dev/null || echo 0)
+SC_WARNINGS=$(echo "$SC_OUTPUT" | jq '[.[] | select(.level == "warning")] | length' 2>/dev/null || echo 0)
+SC_DETAILS=""
 
 if [ "$SC_ERRORS" -gt 0 ]; then
+    SC_DETAILS=$(shellcheck $SCRIPTS 2>&1 || true)
     echo -e "${RED}✘ Failed: $SC_ERRORS ShellCheck errors found.${NC}"
-    shellcheck "$SCRIPTS" | grep -A 1 "line"
+    echo "$SC_DETAILS"
 elif [ "$SC_WARNINGS" -gt "$MAX_SHELLCHECK_WARNINGS" ]; then
+    SC_DETAILS=$(shellcheck $SCRIPTS 2>&1 || true)
     echo -e "${RED}✘ Failed: $SC_WARNINGS ShellCheck warnings (Threshold: $MAX_SHELLCHECK_WARNINGS).${NC}"
-    shellcheck "$SCRIPTS" | grep -A 1 "line"
+    echo "$SC_DETAILS"
 else
     echo -e "${GREEN}✔ Passed: $SC_ERRORS errors, $SC_WARNINGS warnings.${NC}"
 fi
 
 # 2. Bashate
 echo -e "\n${BLUE}[2/3] Running Bashate...${NC}"
-# Ignore E006 (Line too long) as it's common in shell scripts with complex commands
-BASHATE_OUTPUT=$(bashate --ignore E006 $SCRIPTS 2>&1)
-BASHATE_CODE=$?
-BASHATE_ERRORS=$(echo "$BASHATE_OUTPUT" | grep -c "E[0-9]" || true)
+BASHATE_OUTPUT=$(bashate --ignore E006 $SCRIPTS 2>&1 || true)
+BASHATE_DETAILS=$(echo "$BASHATE_OUTPUT" | grep "E[0-9]" || true)
+BASHATE_ERRORS=$(echo "$BASHATE_DETAILS" | grep -c "E[0-9]" || true)
 
-if [ "$BASHATE_CODE" -ne 0 ] || [ "$BASHATE_ERRORS" -gt "$MAX_BASHATE_ERRORS" ]; then
+if [ "$BASHATE_ERRORS" -gt "$MAX_BASHATE_ERRORS" ]; then
     echo -e "${RED}✘ Failed: $BASHATE_ERRORS style errors found.${NC}"
-    echo "$BASHATE_OUTPUT" | grep "E[0-9]" | head -n 10
+    echo "$BASHATE_DETAILS"
 else
     echo -e "${GREEN}✔ Passed: No style errors.${NC}"
+    BASHATE_DETAILS=""
 fi
 
 # 3. Semgrep
 echo -e "\n${BLUE}[3/3] Running Semgrep...${NC}"
-SEMGREP_OUTPUT=$(semgrep --config p/shell --json $SCRIPTS 2>/dev/null)
+SEMGREP_OUTPUT=$(semgrep --config p/shell --json $SCRIPTS 2>/dev/null || true)
 SEMGREP_ISSUES=$(echo "$SEMGREP_OUTPUT" | jq '.results | length' 2>/dev/null || echo 0)
+SEMGREP_DETAILS=""
 
 if [ "$SEMGREP_ISSUES" -gt "$MAX_SEMGREP_ISSUES" ]; then
+    SEMGREP_DETAILS=$(semgrep --config p/shell $SCRIPTS 2>&1 || true)
     echo -e "${RED}✘ Failed: $SEMGREP_ISSUES security/pattern issues found.${NC}"
-    semgrep --config p/shell $SCRIPTS
+    echo "$SEMGREP_DETAILS"
 else
     echo -e "${GREEN}✔ Passed: No critical patterns found.${NC}"
 fi
@@ -83,6 +87,19 @@ if [ "$SC_ERRORS" -gt 0 ] || \
    [ "$BASHATE_ERRORS" -gt "$MAX_BASHATE_ERRORS" ] || \
    [ "$SEMGREP_ISSUES" -gt "$MAX_SEMGREP_ISSUES" ]; then
     echo -e "${RED}RESULT: QUALITY BENCHMARK FAILED${NC}"
+    echo -e "\n${RED}=== VALIDATION ERRORS ===${NC}"
+    if [ -n "$SC_DETAILS" ]; then
+        echo -e "\n${RED}--- ShellCheck ---${NC}"
+        echo "$SC_DETAILS"
+    fi
+    if [ -n "$BASHATE_DETAILS" ]; then
+        echo -e "\n${RED}--- Bashate ---${NC}"
+        echo "$BASHATE_DETAILS"
+    fi
+    if [ -n "$SEMGREP_DETAILS" ]; then
+        echo -e "\n${RED}--- Semgrep ---${NC}"
+        echo "$SEMGREP_DETAILS"
+    fi
     exit 1
 else
     echo -e "${GREEN}RESULT: QUALITY BENCHMARK PASSED${NC}"

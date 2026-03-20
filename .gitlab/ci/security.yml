@@ -21,6 +21,8 @@
 .trivy_image_base:
   stage: security
   image: docker:latest
+  services:
+    - docker:dind
   allow_failure: false
   tags:
     - containers
@@ -82,7 +84,7 @@ security:trivy:repo:
 security:scan-builder-armhf:
   extends: .trivy_image_base
   tags:
-    - containers
+    - linux
   needs:
     - job: build:builder-armhf
       optional: true
@@ -105,7 +107,7 @@ security:scan-builder-armhf:
 security:scan-builder-arm64:
   extends: .trivy_image_base
   tags:
-    - containers
+    - linux
   needs:
     - job: build:builder-arm64
       optional: true

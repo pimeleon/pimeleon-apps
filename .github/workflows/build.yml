@@ -1,288 +1,142 @@
 ---
-# Build builder container images and cross-compiled ARM packages, then publish
-# as GitHub Releases.
-#
-# Triggers:
-#   push to master/develop — when versions/**, packages/**, or containers/** change
-#   workflow_dispatch      — manual run; optional `package` input filters which
-#                            package to build (empty = all)
-
-name: Build and Publish
+name: Pimeleon Factory
 
 on:
   push:
-    branches: [master, develop]
-    paths:
-      - 'versions/**'
-      - 'packages/**'
-      - 'containers/**'
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
   workflow_dispatch:
-    inputs:
-      package:
-        description: 'Package to build (leave empty for all)'
-        required: false
-        default: ''
-
-permissions:
-  contents: write
-  packages: write
 
 env:
-  IMAGE_BASE: ghcr.io/${{ github.repository }}
-  QUIET: "1"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # ── Discovery ───────────────────────────────────────────────────────────────
-  discovery:
-    name: Discover Packages
+  # ── PREPARE: Builder Images ────────────────────────────────────────────────
+  prepare:
+    name: Prepare Builder (${{ matrix.arch }})
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [armhf, arm64]
     outputs:
-      packages: ${{ steps.set-matrix.outputs.packages }}
+      image_armhf: ${{ steps.image_name.outputs.armhf }}
+      image_arm64: ${{ steps.image_name.outputs.arm64 }}
     steps:
-      - name: Check out repository
+      - name: Checkout
         uses: actions/checkout@v4
-      - name: Set matrix
-        id: set-matrix
+
+      - name: Set Image Name
+        id: image_name
         run: |
-          INPUT_PKG="${{ inputs.package }}"
-          if [ -n "$INPUT_PKG" ]; then
-            echo "packages=[\"$INPUT_PKG\"]" >> "$GITHUB_OUTPUT"
-          else
-            # List packages dynamically from directory structure
-            PKGS=$(ls -d packages/*/ | cut -f2 -d'/' | jq -R -s -c 'split("\n")[:-1]')
-            echo "packages=${PKGS}" >> "$GITHUB_OUTPUT"
-          fi
+          LOWER_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE=ghcr.io/${LOWER_REPO}/builder-${{ matrix.arch }}:latest" >> $GITHUB_ENV
 
-  # ── Security (FS) ────────────────────────────────────────────────────────────
-  security-fs:
-    name: Repo Security Scan (Trivy)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-      - name: Run Trivy FS scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'table'
-          exit-code: '0'
-          severity: 'HIGH,CRITICAL'
-
-  # ── Builder container images ─────────────────────────────────────────────────
-  build-containers:
-    name: Build container (${{ matrix.arch }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        arch: [armhf, arm64]
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Detect Dockerfile changes
+      - name: Check for Changes
         id: changes
-        run: |
-          # Always rebuild on workflow_dispatch or initial push (no before SHA)
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          BEFORE="${{ github.event.before }}"
-          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || [ -z "$BEFORE" ]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if git diff --name-only "$BEFORE" "${{ github.sha }}" \
-              | grep -q "^containers/builder-${{ matrix.arch }}/"; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          fi
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            builder:
+              - 'containers/builder-${{ matrix.arch }}/**'
+              - 'scripts/publish-builders.sh'
+              - 'scripts/update-tools.sh'
+              - 'versions/tools.yml'
 
-      - name: Log in to GitHub Container Registry
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push builder image
-        if: steps.changes.outputs.changed == 'true'
-        env:
-          DOCKER_BUILDKIT: '1'
-        run: |
-          IMAGE="${{ env.IMAGE_BASE }}/builder-${{ matrix.arch }}:latest"
-          docker pull "${IMAGE}" || true
-          docker build \
-            --cache-from "${IMAGE}" \
-            -t "${IMAGE}" \
-            -f "containers/builder-${{ matrix.arch }}/Dockerfile" .
-          docker push --quiet "${IMAGE}"
-
-      - name: Run Trivy Image scan
-        uses: aquasecurity/trivy-action@master
+      - name: Build and Push
+        if: steps.changes.outputs.builder == 'true' || github.ref == 'refs/heads/master'
+        uses: docker/build-push-action@v5
         with:
-          image-ref: "${{ env.IMAGE_BASE }}/builder-${{ matrix.arch }}:latest"
-          format: 'table'
-          exit-code: '0'
-          severity: 'HIGH,CRITICAL'
+          context: .
+          file: containers/builder-${{ matrix.arch }}/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE }}
+          cache-from: type=registry,ref=${{ env.IMAGE }}
+          cache-to: type=inline
 
-  # ── Package builds ───────────────────────────────────────────────────────────
-  build-packages:
-    name: Build ${{ matrix.package }} (${{ matrix.arch }})
+  # ── VERIFY: Gate (Lint, Security, Smoke) ───────────────────────────────────
+  verify:
+    name: Verify (${{ matrix.check }})
     runs-on: ubuntu-latest
-    needs: [discovery, build-containers]
+    # Skip verification on direct master push (assume verified by MR)
+    if: github.ref != 'refs/heads/master'
+    needs: [prepare]
     strategy:
-      fail-fast: false
       matrix:
-        package: ${{ fromJSON(needs.discovery.outputs.packages) }}
-        arch: [armhf, arm64]
-
+        check: [lint, smoke-armhf, smoke-arm64]
     steps:
-      - name: Check out repository
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Determine whether to build
-        id: gate
+      # --- LINT CHECK ---
+      - name: Lint (Shell/YAML)
+        if: matrix.check == 'lint'
         run: |
-          PKG="${{ matrix.package }}"
-          ARCH="${{ matrix.arch }}"
-          EVENT="${{ github.event_name }}"
-          INPUT_PKG="${{ inputs.package }}"
+          sudo apt-get install -y shellcheck yamllint
+          yamllint -c .yamllint .
+          shellcheck scripts/*.sh
 
-          if [ "$EVENT" = "workflow_dispatch" ]; then
-            if [ -z "$INPUT_PKG" ] || [ "$INPUT_PKG" = "$PKG" ]; then
-              echo "proceed=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "proceed=false" >> "$GITHUB_OUTPUT"
-            fi
-            exit 0
-          fi
-
-          BEFORE="${{ github.event.before }}"
-          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || [ -z "$BEFORE" ]; then
-            echo "proceed=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          CHANGED=$(git diff --name-only "$BEFORE" "${{ github.sha }}")
-          if echo "$CHANGED" | grep -qE "^(versions/${PKG}-${ARCH}\.version|packages/${PKG}/)"; then
-            echo "proceed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "proceed=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Read version
-        if: steps.gate.outputs.proceed == 'true'
-        id: ver
+      # --- SMOKE CHECKS ---
+      - name: Smoke Test (Environment)
+        if: startsWith(matrix.check, 'smoke')
         run: |
-          echo "version=$(cat "versions/${{ matrix.package }}-${{ matrix.arch }}.version")" \
-            >> "$GITHUB_OUTPUT"
+          ARCH=$(echo "${{ matrix.check }}" | cut -d'-' -f2)
+          LOWER_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE="ghcr.io/${LOWER_REPO}/builder-${ARCH}:latest"
 
-      - name: Log in to GitHub Container Registry
-        if: steps.gate.outputs.proceed == 'true'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          echo "Pulling ${IMAGE}..."
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker pull "${IMAGE}"
+          docker run --rm "${IMAGE}" go version
 
-      - name: Build package
-        if: steps.gate.outputs.proceed == 'true'
-        run: |
-          IMAGE="${{ env.IMAGE_BASE }}/builder-${{ matrix.arch }}:latest"
-          VERSION="${{ steps.ver.outputs.version }}"
-          mkdir -p output logs
-
-          CONTAINER_ID=$(docker create \
-            -e PACKAGE_NAME="${{ matrix.package }}" \
-            -e PACKAGE_VERSION="${VERSION}" \
-            -e TARGET_ARCH="${{ matrix.arch }}" \
-            -e OUTPUT_DIR=/output \
-            -e QUIET="${{ env.QUIET }}" \
-            "${IMAGE}")
-          docker cp "packages/${{ matrix.package }}/." "${CONTAINER_ID}:/package/"
-          docker cp scripts/. "${CONTAINER_ID}:/scripts/"
-
-          # Use build-package.sh logic for execution
-          docker start -a "${CONTAINER_ID}"
-
-          EXIT_CODE=$(docker inspect "${CONTAINER_ID}" --format='{{.State.ExitCode}}')
-          docker cp "${CONTAINER_ID}:/output/." output/ || true
-          docker rm "${CONTAINER_ID}"
-          [ "${EXIT_CODE}" -eq 0 ] || exit 1
-
-      - name: Upload build artifacts
-        if: steps.gate.outputs.proceed == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.package }}-${{ matrix.arch }}
-          path: |
-            output/*.tar.gz
-            output/*.sha256
-          retention-days: 14
-
-  # ── Publish ──────────────────────────────────────────────────────────────────
-  publish:
-    name: Publish GitHub Releases
+  # ── RELEASE: Production Build ──────────────────────────────────────────────
+  release:
+    name: Production Build & Publish
     runs-on: ubuntu-latest
-    needs: [build-packages]
-    if: ${{ always() && contains(needs.build-packages.result, 'success') }}
+    # Only run on Master
+    if: github.ref == 'refs/heads/master'
+    needs: [prepare]
     permissions:
       contents: write
-
+      packages: write
     steps:
-      - name: Check out repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download build artifacts
-        continue-on-error: true
-        uses: actions/download-artifact@v4
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          path: artifacts
-          merge-multiple: true
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create GitHub Releases and upload assets
+      - name: Build All Packages
+        run: |
+          # Define Image Base for local-build script override
+          LOWER_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          export CI_REGISTRY_IMAGE="ghcr.io/${LOWER_REPO}"
+
+          # Install dependencies for the orchestrator script
+          sudo apt-get install -y bash curl
+
+          # Run the build orchestrator (same as GitLab)
+          ./local-build.sh all armhf
+          ./local-build.sh all arm64
+
+      - name: Publish Releases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          shopt -s globstar nullglob
-          tarballs=(artifacts/**/*.tar.gz)
-
-          if [ "${#tarballs[@]}" -eq 0 ]; then
-            echo "No artifacts to publish"
-            exit 0
-          fi
-
-          for file in "${tarballs[@]}"; do
-            BASENAME=$(basename "${file}")
-            # Parse: {package}-{version}-{arch}-pimeleon.tar.gz
-            PKGNAME=$(echo "${BASENAME}" | sed 's/-[0-9].*//')
-            VERSION=$(echo "${BASENAME}" | sed "s/^${PKGNAME}-//" | sed 's/-arm.*//')
-            ARCH=$(echo "${BASENAME}" | grep -oE 'arm(hf|64)')
-            TAG="${PKGNAME}-${ARCH}-v${VERSION}"
-
-            echo "Publishing ${PKGNAME} ${VERSION} (${ARCH}) → ${TAG}"
-
-            if ! gh release view "${TAG}" > /dev/null 2>&1; then
-              gh release create "${TAG}" \
-                --target ${{ github.ref_name }} \
-                --title "${PKGNAME} ${ARCH} v${VERSION}" \
-                --notes "Automated build of ${PKGNAME} ${VERSION} for ${ARCH}"
-            fi
-
-            gh release upload "${TAG}" "${file}" --clobber
-
-            if [ -f "${file}.sha256" ]; then
-              gh release upload "${TAG}" "${file}.sha256" --clobber
-            fi
-
-            echo "Released: ${TAG}"
-          done
+          ./scripts/ci-publish-github.sh

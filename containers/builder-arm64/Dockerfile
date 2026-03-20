@@ -19,6 +19,7 @@ RUN apt-get update && apt-get dist-upgrade -yq && apt-get install -yq --no-insta
     ninja-build \
     libreadline-dev:arm64 \
     libidn2-dev:arm64 \
+    libidn11-dev:arm64 \
     nettle-dev:arm64 \
     libgmp-dev:arm64 \
     libmbedtls-dev:arm64 \

@@ -57,7 +57,7 @@ jobs:
 
       - name: Build and Push
         if: steps.changes.outputs.builder == 'true' || github.ref == 'refs/heads/master'
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: containers/builder-${{ matrix.arch }}/Dockerfile

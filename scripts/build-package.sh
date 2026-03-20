@@ -86,6 +86,8 @@ CONTAINER_ID=$(docker create \
     -e PIMELEON_PROFILE="${PIMELEON_PROFILE}" \
     -e APT_CACHE_SERVER="${APT_CACHE_SERVER:-}" \
     -e APT_CACHE_PORT="${APT_CACHE_PORT:-}" \
+    -e GOCACHE=/build/.cache/go-build \
+    -e GOMODCACHE=/build/.cache/go-mod \
     "${IMAGE}" /scripts/container-build.sh "${PKG_NAME}" "${PKG_VERSION}")
 
 # 2. Inject Code

@@ -54,7 +54,24 @@ build_single_package() {
     # This will check upstream, download if newer or missing, and update the version file
     ./scripts/update-sources.sh "$pkg"
 
-    log_info "Building $pkg for $target_arch (Local Mode)..."
+    # Get current version from version file
+    local version_file="versions/${pkg}-${target_arch}.version"
+    if [ ! -f "${version_file}" ]; then
+        log_error "Version file not found: ${version_file}"
+        return 1
+    fi
+    local version=$(cat "${version_file}")
+
+    # Check if image already exists in registry
+    local registry_url="https://gitlab.pirouter.dev/api/v4/projects/${CI_PROJECT_ID:-20}/packages/generic/pimeleon"
+    local package_url="${registry_url}/${pkg}/${version}/${pkg}-${version}-${target_arch}-pimeleon.tar.gz"
+
+    if curl -fsSL -k -I "${package_url}" >/dev/null 2>&1; then
+        log_info "✓ ${pkg} v${version} for ${target_arch} already in registry — skipping build"
+        return 0
+    fi
+
+    log_info "Building $pkg v${version} for $target_arch (Local Mode)..."
     mkdir -p output logs
 
     # Launch build via Docker

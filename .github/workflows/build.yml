@@ -4,6 +4,8 @@ name: Pimeleon Factory
 on:
   push:
     branches: [ master ]
+    tags:
+      - 'v*'
   pull_request:
     branches: [ master ]
   workflow_dispatch:
@@ -105,8 +107,8 @@ jobs:
   release:
     name: Production Build & Publish
     runs-on: ubuntu-latest
-    # Only run on Master
-    if: github.ref == 'refs/heads/master'
+    # Only run on version tags (created by GitLab go-semrel-gitlab)
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: [prepare]
     permissions:
       contents: write
@@ -138,5 +140,6 @@ jobs:
       - name: Publish Releases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
           ./scripts/ci-publish-github.sh

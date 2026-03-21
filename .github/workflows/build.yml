@@ -86,9 +86,10 @@ jobs:
       - name: Lint (Shell/YAML)
         if: matrix.check == 'lint'
         run: |
-          sudo apt-get install -y shellcheck yamllint
+          sudo apt-get install -y shellcheck yamllint jq python3 python3-pip
           yamllint -c .yamllint .
-          shellcheck scripts/*.sh
+          python3 -m pip install --quiet bashate semgrep
+          ./scripts/quality-benchmark.sh
 
       # --- SMOKE CHECKS ---
       - name: Smoke Test (Environment)

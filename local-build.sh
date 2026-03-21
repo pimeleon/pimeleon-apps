@@ -62,8 +62,8 @@ build_single_package() {
     fi
     local version=$(cat "${version_file}")
 
-    # Check if image already exists in registry
-    local registry_url="https://gitlab.pirouter.dev/api/v4/projects/${CI_PROJECT_ID:-20}/packages/generic"
+    # Check if image already exists in registry (pi-router-apps project ID: 20)
+    local registry_url="https://gitlab.pirouter.dev/api/v4/projects/20/packages/generic"
     local gl_version="${target_arch}-${version}"
     local package_url="${registry_url}/${pkg}/${gl_version}/${pkg}-${version}-${target_arch}-pimeleon.tar.gz"
 

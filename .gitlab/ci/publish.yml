@@ -11,6 +11,12 @@ publish:gitlab:
   needs:
     - job: build:all
       artifacts: true
+    - job: security:trivy:repo
+      optional: true
+    - job: security:scan-builder-armhf
+      optional: true
+    - job: security:scan-builder-arm64
+      optional: true
   interruptible: true
   rules:
     # PRODUCTION: Release artifacts ONLY on the actual master branch (Merge or Hotfix)

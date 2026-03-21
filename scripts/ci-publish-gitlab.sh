@@ -34,15 +34,15 @@ for pkg in output/*-pimeleon.tar.gz; do
     # GitLab Package Version must be {arch}-{version} for pi-router-build compatibility
     GL_VERSION="${ARCH}-${VERSION}"
 
-    log_info "Uploading ${APP_NAME} v${VERSION} (${ARCH}) to project ${CI_PROJECT_ID}..."
+    log_info "Uploading ${APP_NAME} v${VERSION} (${ARCH}) to project 20..."
     curl -fsSLk --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
          --upload-file "${pkg}" \
-         "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${APP_NAME}/${GL_VERSION}/${BASENAME}"
+         "${CI_API_V4_URL}/projects/20/packages/generic/${APP_NAME}/${GL_VERSION}/${BASENAME}"
 
     # Also upload the checksum if it exists
     if [ -f "${pkg}.sha256" ]; then
         curl -fsSLk --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
              --upload-file "${pkg}.sha256" \
-             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${APP_NAME}/${GL_VERSION}/${BASENAME}.sha256"
+             "${CI_API_V4_URL}/projects/20/packages/generic/${APP_NAME}/${GL_VERSION}/${BASENAME}.sha256"
     fi
 done

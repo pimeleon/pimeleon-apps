@@ -15,7 +15,7 @@ LOCAL_PATH="${CACHE_DIR}/tools/${GO_TARBALL}"
 find "${CACHE_DIR}/tools" -name "go*.tar.gz" ! -name "${GO_TARBALL}" -type f -exec rm -f {} +
 
 # Registry Config
-PROJECT_ID="${CI_PROJECT_ID:-20}"
+PROJECT_ID="20"  # pi-router-apps project
 REGISTRY_URL="https://gitlab.pirouter.dev/api/v4/projects/${PROJECT_ID}/packages/generic/build-tools/${GO_VER}/${GO_TARBALL}"
 
 if [[ -f "$LOCAL_PATH" ]]; then

@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; source "${SCRIPT_DIR
 CACHE_DIR="${CACHE_DIR:-cache/pimeleon-downloads}"
 mkdir -p "${CACHE_DIR}"
 
-PROJECT_ID="${CI_PROJECT_ID:-20}"
+PROJECT_ID="20"  # pi-router-apps project
 REGISTRY_URL="https://gitlab.pirouter.dev/api/v4/projects/${PROJECT_ID}/packages/generic/sources"
 
 download_and_cache_tarball() {

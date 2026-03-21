@@ -63,10 +63,17 @@ build_single_package() {
     local version=$(cat "${version_file}")
 
     # Check if image already exists in registry
-    local registry_url="https://gitlab.pirouter.dev/api/v4/projects/${CI_PROJECT_ID:-20}/packages/generic/pimeleon"
-    local package_url="${registry_url}/${pkg}/${version}/${pkg}-${version}-${target_arch}-pimeleon.tar.gz"
+    local registry_url="https://gitlab.pirouter.dev/api/v4/projects/${CI_PROJECT_ID:-20}/packages/generic"
+    local gl_version="${target_arch}-${version}"
+    local package_url="${registry_url}/${pkg}/${gl_version}/${pkg}-${version}-${target_arch}-pimeleon.tar.gz"
 
-    if curl -fsSL -k -I "${package_url}" >/dev/null 2>&1; then
+    # Check registry with auth if in CI
+    local curl_opts=("-fsSL" "-k" "-I")
+    if [[ -n "${CI_JOB_TOKEN:-}" ]]; then
+        curl_opts+=("-H" "JOB-TOKEN: ${CI_JOB_TOKEN}")
+    fi
+
+    if curl "${curl_opts[@]}" "${package_url}" >/dev/null 2>&1; then
         log_info "✓ ${pkg} v${version} for ${target_arch} already in registry — skipping build"
         return 0
     fi

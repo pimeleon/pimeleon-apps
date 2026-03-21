@@ -131,9 +131,11 @@ cleanup_on_exit() {
     set +e # Don't exit on error during cleanup
 
     # Comprehensive cleanup for 'all' mode at exit (success or failure)
-    if [[ "${PACKAGE:-}" == "all" ]]; then
-        log_warn "Cleaning up all build artifacts..."
-        safe_rm build/* || true
+    if [[ "${PACKAGE:-}" == "all" ]] && [[ -d "build" ]]; then
+        if [[ -n "$(find build -mindepth 1 2>/dev/null)" ]]; then
+            log_warn "Cleaning up all build artifacts..."
+            safe_rm build/* || true
+        fi
     fi
 
     # On failure (non-zero exit code)

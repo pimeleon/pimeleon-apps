@@ -19,7 +19,7 @@
       - .trivycache/
 
 .trivy_image_base:
-  stage: security
+  stage: test
   image: docker:latest
   services:
     - docker:dind

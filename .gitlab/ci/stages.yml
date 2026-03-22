@@ -6,5 +6,6 @@ stages:
   - security
   - lint
   - build
+  - test
   - publish
   - release

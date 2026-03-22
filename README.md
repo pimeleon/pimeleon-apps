@@ -10,6 +10,16 @@ world's most critical anonymity tools with the precision required by the Pimeleo
 
 ---
 
+[![Build](https://github.com/pimeleon/pimeleon-apps/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/pimeleon/pimeleon-apps/actions)
+[![Latest Release](https://img.shields.io/github/v/release/pimeleon/pimeleon-apps?label=release&color=blue)](https://github.com/pimeleon/pimeleon-apps/releases)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+| Package Registry | Builder Images |
+| --- | --- |
+| [![Packages](https://img.shields.io/badge/packages-GitHub%20Registry-orange)](https://github.com/pimeleon/pimeleon-apps/releases) | [![armhf](https://img.shields.io/badge/armhf-ghcr.io-blueviolet)](https://github.com/pimeleon/pimeleon-apps/pkgs/container/pimeleon-apps/builder-armhf)  [![arm64](https://img.shields.io/badge/arm64-ghcr.io-blueviolet)](https://github.com/pimeleon/pimeleon-apps/pkgs/container/pimeleon-apps/builder-arm64) |
+
+---
+
 ## The Pimeleon Advantage: Professional-Standard Capabilities
 
 - **Pimeleon Multi-Arch Mastery**: Command both `armhf` (Legacy/Zero) and `arm64` (Pi 4/5) from a single, unified

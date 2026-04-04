@@ -6,3 +6,4 @@ build/
 *.gzip
 *.zip
 logs/
+.env

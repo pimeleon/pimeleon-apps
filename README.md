@@ -79,7 +79,7 @@ make compile TARGET_ARCH=armhf
 ## Pimeleon Quality Standards
 
 - **Deep Image Scans**: Continuous Trivy auditing of Pimeleon builder environments.
-- **Zero-Error Benchmarks**: Automated `shellcheck`, `bashate`, and `semgrep` gatekeeping.
+- **Zero-Error Benchmarks**: Automated `shellcheck`, and `semgrep` gatekeeping.
 - **Surgical CI/CD**: Interruptible Pimeleon pipelines designed for maximum speed and cost-efficiency.
 
 ---
@@ -87,7 +87,6 @@ make compile TARGET_ARCH=armhf
 ## Pimeleon Strategic Layout
 
 - `packages/`: Modular build logic and Pimeleon environment blueprints.
-- `containers/`: Specialized Docker architecture for Pimeleon ARM cross-compilation.
 - `scripts/`: The Pimeleon orchestration brain. Automated, efficient, relentless.
 - `output/`: Production-ready Pimeleon artifacts. Signed and verified (`.tar.gz` + `.sha256`).
 

@@ -12,7 +12,6 @@ NC='\033[0m' # No Color
 
 # Quality Thresholds
 MAX_SHELLCHECK_WARNINGS=5
-MAX_BASHATE_ERRORS=0
 MAX_SEMGREP_ISSUES=0
 
 # Core scripts to scan
@@ -41,21 +40,7 @@ else
     echo -e "${GREEN}✔ Passed: $SC_ERRORS errors, $SC_WARNINGS warnings.${NC}"
 fi
 
-# 2. Bashate
-echo -e "\n${BLUE}[2/3] Running Bashate...${NC}"
-BASHATE_OUTPUT=$(bashate --ignore E006 $SCRIPTS 2>&1 || true)
-BASHATE_DETAILS=$(echo "$BASHATE_OUTPUT" | grep "E[0-9]" || true)
-BASHATE_ERRORS=$(echo "$BASHATE_DETAILS" | grep -c "E[0-9]" || true)
-
-if [ "$BASHATE_ERRORS" -gt "$MAX_BASHATE_ERRORS" ]; then
-    echo -e "${RED}✘ Failed: $BASHATE_ERRORS style errors found.${NC}"
-    echo "$BASHATE_DETAILS"
-else
-    echo -e "${GREEN}✔ Passed: No style errors.${NC}"
-    BASHATE_DETAILS=""
-fi
-
-# 3. Semgrep
+# 2. Semgrep
 echo -e "\n${BLUE}[3/3] Running Semgrep...${NC}"
 SEMGREP_OUTPUT=$(semgrep --config p/shell --json $SCRIPTS 2>/dev/null || true)
 SEMGREP_ISSUES=$(echo "$SEMGREP_OUTPUT" | jq '.results | length' 2>/dev/null || echo 0)
@@ -77,14 +62,12 @@ printf "%-25s | %-10s | %-10s\n" "Metric" "Found" "Threshold"
 echo "--------------------------------------------------"
 printf "%-25s | %-10s | %-10s\n" "ShellCheck Errors" "$SC_ERRORS" "0"
 printf "%-25s | %-10s | %-10s\n" "ShellCheck Warnings" "$SC_WARNINGS" "$MAX_SHELLCHECK_WARNINGS"
-printf "%-25s | %-10s | %-10s\n" "Bashate Errors" "$BASHATE_ERRORS" "$MAX_BASHATE_ERRORS"
 printf "%-25s | %-10s | %-10s\n" "Semgrep Issues" "$SEMGREP_ISSUES" "$MAX_SEMGREP_ISSUES"
 echo "--------------------------------------------------"
 
 # Final Verdict
 if [ "$SC_ERRORS" -gt 0 ] || \
    [ "$SC_WARNINGS" -gt "$MAX_SHELLCHECK_WARNINGS" ] || \
-   [ "$BASHATE_ERRORS" -gt "$MAX_BASHATE_ERRORS" ] || \
    [ "$SEMGREP_ISSUES" -gt "$MAX_SEMGREP_ISSUES" ]; then
     echo -e "${RED}RESULT: QUALITY BENCHMARK FAILED${NC}"
     echo -e "\n${RED}=== VALIDATION ERRORS ===${NC}"

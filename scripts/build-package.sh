@@ -47,15 +47,22 @@ PKG_VERSION="${2:-}"
 
 # JIT Version Resolution
 if [[ -z "${PKG_VERSION}" ]] || [[ "${PKG_VERSION}" == "latest" ]]; then
-    log_info "No version specified for ${PKG_NAME}. Resolving JIT from upstream..."
+    log_info "No version specified for ${PKG_NAME}. Resolving JIT from environment or upstream..."
     # shellcheck source=/dev/null
     source "packages/${PKG_NAME}/package.env"
-    PKG_VERSION=$(bash scripts/check-upstream.sh \
-        "${UPSTREAM_REPO}" \
-        "${UPSTREAM_TYPE}" \
-        "${UPSTREAM_GITLAB_HOST:-gitlab.com}" \
-        "${UPSTREAM_TAG_PREFIX:-}" \
-        "${UPSTREAM_TAG_PATTERN:-}" 2>/dev/null || echo "${PACKAGE_VERSION}")
+
+    # Use PACKAGE_VERSION from env as primary source
+    PKG_VERSION="${PACKAGE_VERSION:-}"
+
+    if [[ -z "${PKG_VERSION}" ]] || [[ "${PKG_VERSION}" == "latest" ]]; then
+        PKG_VERSION=$(bash scripts/check-upstream.sh \
+            "${UPSTREAM_REPO}" \
+            "${UPSTREAM_TYPE}" \
+            "${UPSTREAM_GITLAB_HOST:-gitlab.com}" \
+            "${UPSTREAM_TAG_PREFIX:-}" \
+            "${UPSTREAM_TAG_PATTERN:-}" 2>/dev/null) || \
+            die "Cannot resolve version for ${PKG_NAME}: upstream query failed and no version specified in package.env"
+    fi
     log_info "Resolved ${PKG_NAME} to version ${PKG_VERSION}"
 fi
 
@@ -99,6 +106,8 @@ docker cp scripts/. "${CONTAINER_ID}:/scripts/"
 docker cp "packages/${PKG_NAME}/." "${CONTAINER_ID}:/package/"
 
 # 3. Execute Build (Start and Attach)
+# Remove stale log file (may be root-owned from a pre-`--user` run)
+rm -f "logs/${PKG_NAME}-${TARGET_ARCH}.log" 2>/dev/null || true
 log_info "Logging build output to logs/${PKG_NAME}-${TARGET_ARCH}.log"
 if [[ "${QUIET:-0}" == "1" ]]; then
     docker start -a "${CONTAINER_ID}" > "logs/${PKG_NAME}-${TARGET_ARCH}.log" 2>&1

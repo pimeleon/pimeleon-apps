@@ -20,7 +20,6 @@ build:smoke:
     - docker pull "${REGISTRY_IMAGE}"
     - docker run --rm "${REGISTRY_IMAGE}" go version
   rules:
-    # PRELIMINARY: Verify environment on Develop push and ALL Merge Requests (Gate)
     - if: '$CI_COMMIT_BRANCH == "develop" && $CI_PIPELINE_SOURCE == "push"'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
 
@@ -29,11 +28,6 @@ build:all:
   image: docker:latest
   tags:
     - containers
-  needs:
-    - job: "lint:shell"
-      optional: true
-    - job: "lint:yaml"
-      optional: true
   interruptible: true
   variables:
     DOCKER_HOST: unix:///var/run/docker.sock
@@ -67,14 +61,14 @@ build:all:
   rules:
     # 1. Always run on master (ensure production images are fresh/pushed)
     - if: '$CI_COMMIT_BRANCH == "master"'
+      when: always
 
     # 2. On develop or other branches: Only run if builder sources actually changed
     - if: '$CI_COMMIT_BRANCH == "develop"'
       changes:
-        - containers/**/*
-        - scripts/update-tools.sh
-        - versions/tools.yml
-        - scripts/publish-builders.sh
+        - .github/**/*
+        - .gitlab/**/*
+        - scripts/*
 
     # 3. Always run on manual trigger from web/schedule
     - if: '$CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "schedule"'

@@ -6,9 +6,9 @@ set -E
 export PATH="/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
 
 SUDO=""
-# if command -v sudo >/dev/null 2>&1; then
-#     SUDO="sudo"
-# fi
+if [[ ! -f /.dockerenv ]] && command -v sudo >/dev/null 2>&1; then
+    SUDO="sudo"
+fi
 
 # Project name for cache keys and output naming
 PIMELEON_PROJECT_NAME="${PIMELEON_PROJECT_NAME:-pimeleon}"
@@ -579,8 +579,9 @@ configure_chroot_apt_proxy() {
     local mount_point=$1
     if should_use_apt_proxy; then
         log_info "Configuring APT cache for chroot: ${APT_CACHE_SERVER}:${APT_CACHE_PORT:-3142}"
-        ${SUDO} mkdir -p "${mount_point}/etc/apt/apt.conf.d"
-        ${SUDO} tee "${mount_point}/etc/apt/apt.conf.d/01proxy" > /dev/null <<EOF
+        local path_prefix="${mount_point%/}"
+        ${SUDO} mkdir -p "${path_prefix}/etc/apt/apt.conf.d"
+        ${SUDO} tee "${path_prefix}/etc/apt/apt.conf.d/01proxy" > /dev/null <<EOF
 # APT Cache Configuration for Build Process
 Acquire::http::Proxy "http://${APT_CACHE_SERVER}:${APT_CACHE_PORT:-3142}";
 # Longer timeouts for slow cache/upstream responses
@@ -861,19 +862,19 @@ fetch_pimeleon_apps() {
         2>/dev/null || true)
 
     if [[ -z "${version}" ]]; then
-        log_warn "No published version found for ${package}/${arch} in pi-router-apps registry"
+        log_warn "No published version found for ${package}/${arch} in apps registry"
         return 1
     fi
 
     local fname="${package}-${version}-${arch}-pimeleon.tar.gz"
     local url="${reg}/${package}/${arch}-${version}/${fname}"
-    log_info "Fetching ${package} ${version} (${arch}) from pi-router-apps registry"
+    log_info "Fetching ${package} ${version} (${arch}) from apps registry"
 
     if curl -fsSLk -H "PRIVATE-TOKEN: ${token}" -o "${download_dir}/${package}.tar.gz" "${url}"; then
         log_info "Fetched ${package} ${version} -> ${download_dir}/${package}.tar.gz"
         return 0
     else
-        log_warn "Failed to fetch ${package} from pi-router-apps registry"
+        log_warn "Failed to fetch ${package} from apps registry"
         return 1
     fi
 }

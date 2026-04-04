@@ -16,6 +16,7 @@
       optional: true
   variables:
     DOCKER_HOST: unix:///var/run/docker.sock
+    GITLAB_FETCH_TOKEN: ${GITLAB_FETCH_TOKEN}
   rules:
     # 1. Always run on master (ensure production images are fresh/pushed)
     - if: '$CI_COMMIT_BRANCH == "master"'
@@ -23,9 +24,7 @@
     # 2. On develop or other branches: Only run if builder sources actually changed
     - if: '$CI_COMMIT_BRANCH == "develop"'
       changes:
-        - containers/**/*
         - scripts/update-tools.sh
-        - versions/tools.yml
         - scripts/publish-builders.sh
 
     # 3. Always run on manual trigger from web/schedule

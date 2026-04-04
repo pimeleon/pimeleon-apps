@@ -3,11 +3,10 @@
 set -euo pipefail
 
 CACHE_DIR="${CACHE_DIR:-cache}"
-TOOLS_FILE="versions/tools.yml"
 mkdir -p "${CACHE_DIR}/tools"
 
-# Get Go version
-GO_VER=$(grep "go:" "$TOOLS_FILE" | awk '{print $2}' | tr -d '"' | tr -d "'")
+# Use BUILDER_GO_VERSION from environment
+GO_VER="${BUILDER_GO_VERSION:-1.24.0}"
 GO_TARBALL="go${GO_VER}.linux-amd64.tar.gz"
 LOCAL_PATH="${CACHE_DIR}/tools/${GO_TARBALL}"
 

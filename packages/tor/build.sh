@@ -2,7 +2,9 @@
 # packages/tor/build.sh
 # BUILD_TYPE=source: cross-compile Tor from the official dist tarball
 set -euo pipefail
+# shellcheck disable=SC1091
 source /scripts/common.sh
+# shellcheck disable=SC1091
 source /package/package.env
 
 # Use version from env if not passed
@@ -18,7 +20,7 @@ DIST_URL="https://dist.torproject.org/${TARBALL}"
 fetch_source "${PACKAGE_NAME}" "${VERSION}" "${TARBALL}" "${DIST_URL}" "${WORK_DIR}/${TARBALL}"
 
 log_info "Extracting source"
-tar xf "${WORK_DIR}/${TARBALL}" -C "${WORK_DIR}"
+tar -zxf "${WORK_DIR}/${TARBALL}" -C "${WORK_DIR}"
 cd "${SRC_DIR}"
 
 log_info "Patching configure to force cross-compilation mode..."
@@ -27,6 +29,7 @@ sed -i 's/cross_compiling=maybe/cross_compiling=yes/g' configure
 sed -i 's/cross_compiling=no/cross_compiling=yes/g' configure
 
 # Fix shell syntax error in configure (test -ge with potentially empty variable)
+# shellcheck disable=SC2016
 sed -i 's/test $tor_cv_st_mtim_nsec -ge/test 0$tor_cv_st_mtim_nsec -ge/g' configure
 
 log_info "Configuring for ${TARGET_ARCH}"
@@ -44,7 +47,7 @@ log_info "Creating multiarch-aware dependency directory at ${DEPS_DIR}..."
 mkdir -p "${DEPS_DIR}/lib"
 ln -snf /usr/include "${DEPS_DIR}/include"
 # Link all static libraries from multiarch path to the flat lib dir Tor expects
-for lib in /usr/lib/${HOST_TRIPLE}/*.a; do
+for lib in /usr/lib/"${HOST_TRIPLE}"/*.a; do
     [ -e "$lib" ] || continue
     ln -sf "$lib" "${DEPS_DIR}/lib/"
 done

@@ -10,11 +10,17 @@ SOURCES ?= github
 APT_PROXY ?=
 QUIET ?= 0
 
+# Load environment variables from .env if it exists
+-include .env
+
+# Extract Go version from env
+GO_VERSION := $(BUILDER_GO_VERSION)
+
 # Get the current directory for absolute paths in traps
 PROJECT_ROOT = $(CURDIR)
 
 # Export all variables to subshells
-export TARGET_ARCH SOURCES APT_PROXY QUIET
+export TARGET_ARCH SOURCES APT_PROXY QUIET GITLAB_FETCH_TOKEN GO_VERSION
 
 # Parse proxy variables for docker build
 ifneq ($(APT_PROXY),)
@@ -23,7 +29,13 @@ ifneq ($(APT_PROXY),)
     PROXY_ARGS = --build-arg APT_CACHE_SERVER=$(CACHE_SERVER) --build-arg APT_CACHE_PORT=$(if $(CACHE_PORT),$(CACHE_PORT),3142)
 endif
 
-export PROXY_ARGS
+# Token and version for fetching tools from GitLab registry
+DOCKER_BUILD_ARGS = --build-arg TARGET_ARCH=$(TARGET_ARCH) \
+                    --build-arg GO_VERSION=$(GO_VERSION) \
+                    $(if $(GITLAB_FETCH_TOKEN),--build-arg GITLAB_FETCH_TOKEN=$(GITLAB_FETCH_TOKEN)) \
+                    $(PROXY_ARGS)
+
+export PROXY_ARGS DOCKER_BUILD_ARGS
 
 help:
 	@echo "Pimeleon App Factory"
@@ -57,10 +69,10 @@ pi-hole: compile-pihole
 # Builder environment setup (ALWAYS rebuilt with --no-cache)
 factory-init: refresh-tools
 	@echo "Initializing pimeleon-factory-$(TARGET_ARCH) environment..."
-	@echo "Proxy settings: $(if $(PROXY_ARGS),$(PROXY_ARGS),none)"
+	@echo "Build args: $(DOCKER_BUILD_ARGS)"
 	@trap "$(PROJECT_ROOT)/scripts/clean-docker.sh --clean-mounts; exit 1" INT TERM
-	docker build --no-cache $(PROXY_ARGS) -t pimeleon-builder-$(TARGET_ARCH):latest \
-		-f containers/builder-$(TARGET_ARCH)/Dockerfile .
+	docker build --no-cache $(DOCKER_BUILD_ARGS) -t pimeleon-builder-$(TARGET_ARCH):latest \
+		-f Dockerfile.builder .
 
 compile-tor:
 	@echo "==> Building tor (latest) [Arch: $(TARGET_ARCH), Source: $(SOURCES)]"

@@ -45,7 +45,7 @@ release:production:
   variables:
     GIT_SSL_NO_VERIFY: "1"
     GITLAB_URL: "https://gitlab.pirouter.dev/api/v4"
-    GSG_TOKEN: $GITLAB_TOKEN
+    GSG_TOKEN: $GITLAB_FETCH_TOKEN
     GSG_MINOR_COMMIT_TYPES: "feat,perf"
     GSG_PATCH_COMMIT_TYPES: "fix"
   script:

@@ -15,6 +15,7 @@ PKG_VERSION="${2:-latest}"
 
 # Source package environment if present
 if [[ -f "/package/package.env" ]]; then
+    # shellcheck disable=SC1091
     source /package/package.env
     PKG_VERSION="${PACKAGE_VERSION:-latest}"
 fi
@@ -27,8 +28,13 @@ case "${TARGET_ARCH}" in
 esac
 
 if [[ -n "${DEPS_VAR}" && -n "${!DEPS_VAR:-}" ]]; then
-    log_info "Installing dependencies: ${!DEPS_VAR}"
-    apt-get update -qq && apt-get install -yqq --no-install-recommends ${!DEPS_VAR}
+    if [[ $(id -u) -eq 0 ]]; then
+        log_info "Installing dependencies: ${!DEPS_VAR}"
+        apt-get update -qq && apt-get install -yqq --no-install-recommends ${!DEPS_VAR} &>/dev/null
+    else
+        log_warn "Not running as root, skipping runtime dependency installation: ${!DEPS_VAR}"
+        log_warn "Please ensure these are included in the Dockerfile.builder."
+    fi
 fi
 
 # Execute the specific package build script

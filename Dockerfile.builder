@@ -52,9 +52,9 @@ RUN if [ -n "${APT_CACHE_SERVER}" ]; then \
     fi
 
 # Install dependencies
-RUN apt-get update && \
-    apt-get dist-upgrade -yq \
-    apt-get install -qq -y --no-install-recommends \
+RUN rm -f /etc/apt/apt.conf.d/docker-clean && \
+    echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache && \
+    apt-get update && apt-get -qy upgrade && apt-get install -qy --no-install-recommends \
     cmake \
     ninja-build \
     build-essential \
@@ -98,11 +98,13 @@ RUN apt-get update && \
     libpcap-dev:${DASH_ARCH} \
     libcap-dev:${DASH_ARCH} \
     liblzma-dev:${DASH_ARCH} \
+    > /dev/null 2>&1 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Go toolchain download from GitLab registry
 RUN curl --header "PRIVATE-TOKEN: ${GITLAB_FETCH_TOKEN}" \
-    -fskSL "https://gitlab.pirouter.dev/api/v4/projects/20/packages/generic/build-tools/${GO_VERSION}/go${GO_VERSION}.linux-amd64.tar.gz" -o /usr/local/go.tar.gz \
+    -fskSL 'https://gitlab.pirouter.dev/api/v4/projects/20/packages/generic/build-tools/${GO_VERSION}/go${GO_VERSION}.linux-amd64.tar.gz' \
+    -o /usr/local/go.tar.gz \
     && tar -C /usr/local -xzf /usr/local/go.tar.gz \
     && rm /usr/local/go.tar.gz
 

@@ -19,7 +19,7 @@
       - .trivycache/
 
 security:gitleaks:
-  stage: security
+  stage: prepare
   image:
     name: ghcr.io/gitleaks/gitleaks:latest
     entrypoint: [""]
@@ -33,7 +33,6 @@ security:gitleaks:
       - gitleaks-report.json
     expire_in: 1 week
     when: on_success
-  interruptible: true
   rules:
     # PRELIMINARY: Only check secrets on Develop pushes and MRs targeting Develop
     - if: '$CI_COMMIT_BRANCH == "develop" && $CI_PIPELINE_SOURCE == "push"'
@@ -41,6 +40,7 @@ security:gitleaks:
 
 security:scan-builder-armhf:
   extends: .trivy_base
+  stage: security
   tags:
     - linux
   needs:
@@ -64,6 +64,7 @@ security:scan-builder-armhf:
 
 security:scan-builder-arm64:
   extends: .trivy_base
+  stage: security
   tags:
     - linux
   needs:

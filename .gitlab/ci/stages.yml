@@ -3,9 +3,10 @@
 # Realigned with legacy c79c26e6 sequence
 stages:
   - prepare
-  - security
   - lint
-  - build
+  - build:builder
+  - build:apps
   - test
+  - security
   - publish
   - release

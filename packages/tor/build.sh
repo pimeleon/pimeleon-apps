@@ -84,7 +84,7 @@ export tor_cv_library_zlib_linker_option=""
     tor_cv_library_libevent_dir="${DEPS_DIR}" \
     tor_cv_library_openssl_dir="${DEPS_DIR}" \
     tor_cv_library_zlib_dir="${DEPS_DIR}" \
-    ${CONFIGURE_FLAGS}
+    ${_CONFIGURE_FLAGS}
 
 log_info "Building Tor..."
 make V=1 -j1
@@ -94,17 +94,17 @@ make V=1 DESTDIR="${INSTALL_DIR}" install
 
 # Strip binaries using arch-specific strip tool
 STRIP_TOOL="${HOST_TRIPLE}-strip"
-for bin in ${OUTPUT_INCLUDES}; do
+for bin in ${_OUTPUT_INCLUDES}; do
     if [[ -f "${INSTALL_DIR}/${bin}" ]]; then
         log_info "Stripping ${bin}"
-        ${STRIP_TOOL} "${INSTALL_DIR}/${bin}" || true
+        "${STRIP_TOOL}" "${INSTALL_DIR}/${bin}" || true
     fi
 done
 
 # Repack only the declared output files
 OUTPUT_ARCHIVE="${OUTPUT_DIR}/${PACKAGE_NAME}-${VERSION}-${TARGET_ARCH}-pimeleon.tar.gz"
 log_info "Packaging binaries..."
-tar czf "${OUTPUT_ARCHIVE}" -C "${INSTALL_DIR}" ${OUTPUT_INCLUDES}
+tar czf "${OUTPUT_ARCHIVE}" -C "${INSTALL_DIR}" ${_OUTPUT_INCLUDES}
 
 # Generate checksum
 sha256sum "${OUTPUT_ARCHIVE}" | tee "${OUTPUT_ARCHIVE}.sha256"

@@ -30,7 +30,8 @@ esac
 if [[ -n "${DEPS_VAR}" && -n "${!DEPS_VAR:-}" ]]; then
     if [[ $(id -u) -eq 0 ]]; then
         log_info "Installing dependencies: ${!DEPS_VAR}"
-        apt-get update -qq && apt-get install -yqq --no-install-recommends ${!DEPS_VAR} &>/dev/null
+        read -ra _deps <<< "${!DEPS_VAR}"
+        apt-get update -qq && apt-get install -yqq --no-install-recommends "${_deps[@]}" &>/dev/null
     else
         log_warn "Not running as root, skipping runtime dependency installation: ${!DEPS_VAR}"
         log_warn "Please ensure these are included in the Dockerfile.builder."

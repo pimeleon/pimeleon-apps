@@ -6,4 +6,5 @@ build/
 copywriter-agent/
 *.skill
 *.tar.gz
+!cache/tools/*.tar.gz
 *.sha256

@@ -64,8 +64,6 @@ export PKG_CONFIG_LIBDIR="/usr/lib/${HOST_TRIPLE}/pkgconfig"
 export STATIC=true
 export CFLAGS="-Wno-error -Wno-stringop-overread"
 export CXXFLAGS="-Wno-error"
-# Apply stability patches to FINALIZED source tree
-bash /package/patch-sources.sh "${SRC_DIR}"
 # Persist CMakeLists.txt for analysis
 log_info "Persisting configuration for analysis..."
 cp src/CMakeLists.txt "${LOGS_DIR}/pihole-CMakeLists.txt" 2>/dev/null || true
@@ -87,7 +85,9 @@ cmake -B build \
     -DGIT_VERSION=OFF \
     -DNET_UBUS=OFF \
     -DFT_TLS=OFF \
-    -DLIBMATH=m \
+    -Wno-dev \
+    -Wno-error=deprecated \
+    -Wno-error=implicit-function-declaration
 
 log_info "Building pihole-FTL..."
 cmake --build build -- -j1
@@ -98,7 +98,7 @@ cp build/pihole-FTL "${INSTALL_DIR}/usr/bin/"
 # Strip binaries
 STRIP_TOOL="${HOST_TRIPLE}-strip"
 log_info "Stripping pihole-FTL"
-${STRIP_TOOL} "${INSTALL_DIR}/usr/bin/pihole-FTL" || true
+"${STRIP_TOOL}" "${INSTALL_DIR}/usr/bin/pihole-FTL" || true
 
 # Repack
 OUTPUT_ARCHIVE="${OUTPUT_DIR}/${PACKAGE_NAME}-${VERSION}-${TARGET_ARCH}-pimeleon.tar.gz"

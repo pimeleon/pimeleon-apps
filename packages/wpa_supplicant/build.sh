@@ -46,12 +46,12 @@ log_info "Building wpa_supplicant for ${TARGET_ARCH} using triple ${HOST_TRIPLE}
 
 # wpa_supplicant Makefile uses CC, set it to the cross-compiler
 # Use pkg-config to get correct CFLAGS/LIBS for libnl, openssl, and dbus
-SSL_CFLAGS=$(${PKG_CONFIG} --cflags openssl)
-SSL_LIBS=$(${PKG_CONFIG} --libs openssl)
-LIBNL_CFLAGS=$(${PKG_CONFIG} --cflags libnl-3.0 libnl-genl-3.0 libnl-route-3.0)
-LIBNL_LIBS=$(${PKG_CONFIG} --libs libnl-3.0 libnl-genl-3.0 libnl-route-3.0)
-DBUS_CFLAGS=$(${PKG_CONFIG} --cflags dbus-1)
-DBUS_LIBS=$(${PKG_CONFIG} --libs dbus-1)
+SSL_CFLAGS=$("${PKG_CONFIG}" --cflags openssl)
+SSL_LIBS=$("${PKG_CONFIG}" --libs openssl)
+LIBNL_CFLAGS=$("${PKG_CONFIG}" --cflags libnl-3.0 libnl-genl-3.0 libnl-route-3.0)
+LIBNL_LIBS=$("${PKG_CONFIG}" --libs libnl-3.0 libnl-genl-3.0 libnl-route-3.0)
+DBUS_CFLAGS=$("${PKG_CONFIG}" --cflags dbus-1)
+DBUS_LIBS=$("${PKG_CONFIG}" --libs dbus-1)
 
 make -j"$(nproc)" CC="${CC}" EXTRA_CFLAGS="${LIBNL_CFLAGS} ${SSL_CFLAGS} ${DBUS_CFLAGS} -O1" LIBS="${LIBNL_LIBS} ${SSL_LIBS} ${DBUS_LIBS}"
 
@@ -61,17 +61,17 @@ cp wpa_cli wpa_passphrase "${INSTALL_DIR}/usr/local/bin/"
 
 # Strip binaries
 STRIP_TOOL="${HOST_TRIPLE}-strip"
-for bin in ${OUTPUT_INCLUDES}; do
+for bin in ${_OUTPUT_INCLUDES}; do
     if [[ -f "${INSTALL_DIR}/${bin}" ]]; then
         log_info "Stripping ${bin}"
-        ${STRIP_TOOL} "${INSTALL_DIR}/${bin}" || true
+        "${STRIP_TOOL}" "${INSTALL_DIR}/${bin}" || true
     fi
 done
 
 # Repack
 OUTPUT_ARCHIVE="${OUTPUT_DIR}/${PACKAGE_NAME}-${VERSION}-${TARGET_ARCH}-pimeleon.tar.gz"
 log_info "Packaging binaries..."
-tar czf "${OUTPUT_ARCHIVE}" -C "${INSTALL_DIR}" ${OUTPUT_INCLUDES}
+tar czf "${OUTPUT_ARCHIVE}" -C "${INSTALL_DIR}" ${_OUTPUT_INCLUDES}
 
 # Generate checksum
 sha256sum "${OUTPUT_ARCHIVE}" | tee "${OUTPUT_ARCHIVE}.sha256"

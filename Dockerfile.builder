@@ -36,7 +36,6 @@ ARG TARGET_ARCH
 FROM arch-${TARGET_ARCH} AS final
 
 # Re-declare arguments needed in this stage
-ARG GITLAB_FETCH_TOKEN
 ARG GO_VERSION=1.24.0
 ARG APT_CACHE_SERVER=192.168.76.5
 ARG APT_CACHE_PORT=3142
@@ -101,12 +100,10 @@ RUN rm -f /etc/apt/apt.conf.d/docker-clean && \
     > /dev/null 2>&1 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Go toolchain download from GitLab registry
-RUN curl --header "PRIVATE-TOKEN: ${GITLAB_FETCH_TOKEN}" \
-    -fskSL 'https://gitlab.pirouter.dev/api/v4/projects/20/packages/generic/build-tools/${GO_VERSION}/go${GO_VERSION}.linux-amd64.tar.gz' \
-    -o /usr/local/go.tar.gz \
-    && tar -C /usr/local -xzf /usr/local/go.tar.gz \
-    && rm /usr/local/go.tar.gz
+# Go toolchain — pre-fetched by update-tools.sh into cache/tools/ before docker build
+COPY cache/tools/ /tmp/go-tools/
+RUN tar -C /usr/local -xzf "/tmp/go-tools/go${GO_VERSION}.linux-amd64.tar.gz" \
+    && rm -rf /tmp/go-tools
 
 # Final environment variables
 ENV PATH="/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"

@@ -6,9 +6,9 @@ set -E
 # Ensure a robust system path is available to all scripts
 export PATH="/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
 
-SUDO=""
+SUDO=()
 if [[ ! -f /.dockerenv ]] && command -v sudo >/dev/null 2>&1; then
-    SUDO="sudo"
+    SUDO=(sudo)
 fi
 
 # Project name for cache keys and output naming
@@ -78,14 +78,14 @@ safe_rm() {
         return
     fi
 
-    for path in "$@"; do
-        if [[ -z "$path" ]]; then
+    for _path in "$@"; do
+        if [[ -z "$_path" ]]; then
             continue
         fi
 
         # Resolve relative paths to absolute for check
         local abs_path
-        abs_path=$(realpath -m "$path" 2>/dev/null || echo "$path")
+        abs_path=$(realpath -m "$_path" 2>/dev/null || echo "$_path")
 
         # Only allow deletion within sanctioned directories
         if [[ "$abs_path" == "${work_dir_base}"* ]] || \
@@ -97,22 +97,21 @@ safe_rm() {
 
             # Proactively find and unmount any sub-mounts under this path
             # Only if path is a directory
-            if [[ -d "$path" ]]; then
-                local nested_mounts
-                nested_mounts=$(findmnt -n -o TARGET -R "$path" 2>/dev/null | sort -r || true)
-                if [[ -n "$nested_mounts" ]]; then
-                    log_warn "safe_rm: Found active mounts under $path, unmounting..."
-                    for mnt in $nested_mounts; do
-                        ${SUDO} umount "$mnt" 2>/dev/null || ${SUDO} umount -l "$mnt" 2>/dev/null || true
+            if [[ -d "$_path" ]]; then
+                local _nested_mounts
+                _nested_mounts=$(findmnt -n -o TARGET -R "$_path" 2>/dev/null | sort -r || true)
+                if [[ -n "$_nested_mounts" ]]; then
+                    log_warn "safe_rm: Found active mounts under $_path, unmounting..."
+                    for mnt in $_nested_mounts; do
+                        "${SUDO[@]}" umount "$mnt" 2>/dev/null || "${SUDO[@]}" umount -l "$mnt" 2>/dev/null || true
                     done
                 fi
             fi
 
-            # We allow glob expansion here by not quoting $path in the final command
-            # shellcheck disable=SC2086
-            ${SUDO} rm -rf $path
+            # We allow glob expansion here by not quoting $_path in the final command
+            "${SUDO[@]}" rm -rf $_path
         else
-            die "CRITICAL: Attempted to delete path outside sanctioned directories: $path"
+            die "CRITICAL: Attempted to delete path outside sanctioned directories: $_path"
         fi
     done
 }
@@ -176,15 +175,15 @@ cleanup_on_exit() {
         if [[ -n "${CLEANUP_IMAGE_PATH:-}" ]]; then
             if [[ -f "$CLEANUP_IMAGE_PATH" ]]; then
                 log_warn "Removing partial image: $CLEANUP_IMAGE_PATH"
-                ${SUDO} rm -f "$CLEANUP_IMAGE_PATH" || true
-                ${SUDO} rm -f "${CLEANUP_IMAGE_PATH}.xz" || true
-                ${SUDO} rm -f "${CLEANUP_IMAGE_PATH}.sha256" || true
+                "${SUDO[@]}" rm -f "$CLEANUP_IMAGE_PATH" || true
+                "${SUDO[@]}" rm -f "${CLEANUP_IMAGE_PATH}.xz" || true
+                "${SUDO[@]}" rm -f "${CLEANUP_IMAGE_PATH}.sha256" || true
             fi
         fi
     fi
 
     # Exit with original code
-    exit $exit_code
+    exit "$exit_code"
 }
 
 # Check if a service is enabled in the current profile
@@ -288,7 +287,7 @@ cleanup_stale_mounts() {
     if [[ -n "$stale_mounts" ]]; then
         for mnt in $stale_mounts; do
             log_warn "Unmounting stale mount: $mnt"
-            ${SUDO} umount -l "$mnt" 2>/dev/null || true
+            "${SUDO[@]}" umount -l "$mnt" 2>/dev/null || true
         done
     fi
 
@@ -299,8 +298,8 @@ cleanup_stale_mounts() {
     if [[ -n "$stale_loops" ]]; then
         for loop in $stale_loops; do
             log_warn "Detaching stale loop device: $loop"
-            ${SUDO} kpartx -d "$loop" 2>/dev/null || true
-            ${SUDO} losetup -d "$loop" 2>/dev/null || true
+            "${SUDO[@]}" kpartx -d "$loop" 2>/dev/null || true
+            "${SUDO[@]}" losetup -d "$loop" 2>/dev/null || true
         done
     fi
 }
@@ -361,10 +360,10 @@ mount_image() {
 
     # Create loop device
     local loop_device
-    loop_device=$(${SUDO} losetup -f --show "$image_path")
+    loop_device=$("${SUDO[@]}" losetup -f --show "$image_path")
 
     # Scan for partitions
-    ${SUDO} kpartx -av "$loop_device"
+    "${SUDO[@]}" kpartx -av "$loop_device"
     sleep 2
 
     # Get partition devices
@@ -374,12 +373,12 @@ mount_image() {
     local root_part="/dev/mapper/${loop_name}p2"
 
     # Mount partitions (Track in stack for reverse cleanup)
-    ${SUDO} mkdir -p "$mount_point"
-    ${SUDO} mount "$root_part" "$mount_point"
+    "${SUDO[@]}" mkdir -p "$mount_point"
+    "${SUDO[@]}" mount "$root_part" "$mount_point"
     MOUNT_STACK+=("$mount_point")
 
-    ${SUDO} mkdir -p "$mount_point/boot"
-    ${SUDO} mount "$boot_part" "$mount_point/boot"
+    "${SUDO[@]}" mkdir -p "$mount_point/boot"
+    "${SUDO[@]}" mount "$boot_part" "$mount_point/boot"
     MOUNT_STACK+=("$mount_point/boot")
 
     # Register for cleanup on error
@@ -403,7 +402,7 @@ unmount_image() {
         if [[ -n "$extra_mounts" ]]; then
             log_warn "Found extra mounts under $mount_point, cleaning up..."
             for mnt in $extra_mounts; do
-                ${SUDO} umount "$mnt" 2>/dev/null || ${SUDO} umount -l "$mnt" 2>/dev/null || true
+                "${SUDO[@]}" umount "$mnt" 2>/dev/null || "${SUDO[@]}" umount -l "$mnt" 2>/dev/null || true
             done
         fi
     fi
@@ -413,7 +412,7 @@ unmount_image() {
         local mnt="${MOUNT_STACK[$i]}"
         if mountpoint -q "$mnt" 2>/dev/null; then
             # Try standard umount first, then lazy
-            ${SUDO} umount "$mnt" 2>/dev/null || ${SUDO} umount -l "$mnt" || log_warn "Failed to unmount $mnt"
+            "${SUDO[@]}" umount "$mnt" 2>/dev/null || "${SUDO[@]}" umount -l "$mnt" || log_warn "Failed to unmount $mnt"
         fi
     done
     MOUNT_STACK=()
@@ -421,8 +420,8 @@ unmount_image() {
     # Remove partition mappings
     if [[ -n "$loop_device" ]]; then
         # Ensure kpartx removes mappings
-        ${SUDO} kpartx -d "$loop_device" 2>/dev/null || true
-        ${SUDO} losetup -d "$loop_device" 2>/dev/null || true
+        "${SUDO[@]}" kpartx -d "$loop_device" 2>/dev/null || true
+        "${SUDO[@]}" losetup -d "$loop_device" 2>/dev/null || true
     fi
 
     # Clear cleanup tracking
@@ -439,31 +438,31 @@ setup_chroot() {
     # Copy qemu static binary for target architecture
     local qemu_binary
     qemu_binary=$(get_qemu_binary)
-    ${SUDO} cp "/usr/bin/${qemu_binary}" "$chroot_dir/usr/bin/"
+    "${SUDO[@]}" cp "/usr/bin/${qemu_binary}" "$chroot_dir/usr/bin/"
 
     # Mount special filesystems
-    ${SUDO} mount -t proc proc "$chroot_dir/proc"
-    ${SUDO} mount -t sysfs sys "$chroot_dir/sys"
-    ${SUDO} mount -t devtmpfs dev "$chroot_dir/dev"
-    ${SUDO} mount -t devpts devpts "$chroot_dir/dev/pts"
+    "${SUDO[@]}" mount -t proc proc "$chroot_dir/proc"
+    "${SUDO[@]}" mount -t sysfs sys "$chroot_dir/sys"
+    "${SUDO[@]}" mount -t devtmpfs dev "$chroot_dir/dev"
+    "${SUDO[@]}" mount -t devpts devpts "$chroot_dir/dev/pts"
 
     # Write resolv.conf with real DNS servers (Docker's 127.0.0.11 doesn't work in chroot)
     # Ensure it's a regular file, not a symlink
-    ${SUDO} rm -f "$chroot_dir/etc/resolv.conf"
-    ${SUDO} tee "$chroot_dir/etc/resolv.conf" > /dev/null <<EOF
+    "${SUDO[@]}" rm -f "$chroot_dir/etc/resolv.conf"
+    "${SUDO[@]}" tee "$chroot_dir/etc/resolv.conf" > /dev/null <<EOF
 # DNS for chroot build environment
 nameserver 8.8.8.8
 nameserver 1.1.1.1
 EOF
 
     # Copy host file to prevent 'unable to resolve host' warnings
-    ${SUDO} cp /etc/hosts "$chroot_dir/etc/hosts"
+    "${SUDO[@]}" cp /etc/hosts "$chroot_dir/etc/hosts"
     # Copy nsswitch.conf to ensure getent works correctly in chroot
-    ${SUDO} cp /etc/nsswitch.conf "$chroot_dir/etc/nsswitch.conf"
+    "${SUDO[@]}" cp /etc/nsswitch.conf "$chroot_dir/etc/nsswitch.conf"
 
     # Pre-populate /etc/hosts with GitHub IPs to bypass DNS resolution checks during build
     # These match current global IPs for github.com and raw.githubusercontent.com
-    ${SUDO} tee -a "$chroot_dir/etc/hosts" > /dev/null <<EOF
+    "${SUDO[@]}" tee -a "$chroot_dir/etc/hosts" > /dev/null <<EOF
 140.82.121.3 github.com
 140.82.121.4 github.com
 185.199.108.133 raw.githubusercontent.com
@@ -473,11 +472,11 @@ EOF
 EOF
 
     # Prevent services from starting in chroot
-    ${SUDO} tee "$chroot_dir/usr/sbin/policy-rc.d" > /dev/null <<EOF
+    "${SUDO[@]}" tee "$chroot_dir/usr/sbin/policy-rc.d" > /dev/null <<EOF
 #!/bin/sh
 exit 101
 EOF
-    ${SUDO} chmod +x "$chroot_dir/usr/sbin/policy-rc.d"
+    "${SUDO[@]}" chmod +x "$chroot_dir/usr/sbin/policy-rc.d"
 
     # Track chroot state for cleanup
     CLEANUP_CHROOT_ACTIVE=true
@@ -490,18 +489,18 @@ cleanup_chroot() {
     log_info "Cleaning up chroot environment"
 
     # Remove policy-rc.d
-    ${SUDO} rm -f "$chroot_dir/usr/sbin/policy-rc.d"
+    "${SUDO[@]}" rm -f "$chroot_dir/usr/sbin/policy-rc.d"
 
     # Unmount special filesystems (reverse order)
-    ${SUDO} umount "$chroot_dir/dev/pts" 2>/dev/null || true
-    ${SUDO} umount "$chroot_dir/dev" 2>/dev/null || true
-    ${SUDO} umount "$chroot_dir/sys" 2>/dev/null || true
-    ${SUDO} umount "$chroot_dir/proc" 2>/dev/null || true
+    "${SUDO[@]}" umount "$chroot_dir/dev/pts" 2>/dev/null || true
+    "${SUDO[@]}" umount "$chroot_dir/dev" 2>/dev/null || true
+    "${SUDO[@]}" umount "$chroot_dir/sys" 2>/dev/null || true
+    "${SUDO[@]}" umount "$chroot_dir/proc" 2>/dev/null || true
 
     # Remove qemu static binary
     local qemu_binary
     qemu_binary=$(get_qemu_binary)
-    ${SUDO} rm -f "$chroot_dir/usr/bin/${qemu_binary}"
+    "${SUDO[@]}" rm -f "$chroot_dir/usr/bin/${qemu_binary}"
 
     # Clear chroot tracking
     CLEANUP_CHROOT_ACTIVE=false
@@ -581,8 +580,8 @@ configure_chroot_apt_proxy() {
     if should_use_apt_proxy; then
         log_info "Configuring APT cache for chroot: ${APT_CACHE_SERVER}:${APT_CACHE_PORT:-3142}"
         local path_prefix="${mount_point%/}"
-        ${SUDO} mkdir -p "${path_prefix}/etc/apt/apt.conf.d"
-        ${SUDO} tee "${path_prefix}/etc/apt/apt.conf.d/01proxy" > /dev/null <<EOF
+        "${SUDO[@]}" mkdir -p "${path_prefix}/etc/apt/apt.conf.d"
+        "${SUDO[@]}" tee "${path_prefix}/etc/apt/apt.conf.d/01proxy" > /dev/null <<EOF
 # APT Cache Configuration for Build Process
 Acquire::http::Proxy "http://${APT_CACHE_SERVER}:${APT_CACHE_PORT:-3142}";
 # Longer timeouts for slow cache/upstream responses
@@ -597,7 +596,7 @@ remove_chroot_apt_proxy() {
     local mount_point=$1
     if [[ -f "${mount_point}/etc/apt/apt.conf.d/01proxy" ]]; then
         log_info "Removing APT cache configuration from chroot"
-        ${SUDO} rm -f "${mount_point}/etc/apt/apt.conf.d/01proxy"
+        "${SUDO[@]}" rm -f "${mount_point}/etc/apt/apt.conf.d/01proxy"
     fi
 }
 
@@ -606,15 +605,15 @@ migrate_apt_keyring() {
     local mount_point=$1
     if [ -f "${mount_point}/etc/apt/trusted.gpg" ]; then
         log_info "Migrating legacy APT keyring to modern format"
-        ${SUDO} mkdir -p "${mount_point}/etc/apt/trusted.gpg.d"
-        ${SUDO} gpg --no-default-keyring \
+        "${SUDO[@]}" mkdir -p "${mount_point}/etc/apt/trusted.gpg.d"
+        "${SUDO[@]}" gpg --no-default-keyring \
             --keyring "${mount_point}/etc/apt/trusted.gpg" \
             --export 2>/dev/null | \
-            ${SUDO} gpg --no-default-keyring \
+            "${SUDO[@]}" gpg --no-default-keyring \
                 --keyring "gnupg-ring:${mount_point}/etc/apt/trusted.gpg.d/raspbian-archive-keyring.gpg" \
                 --import 2>/dev/null || true
-        ${SUDO} chmod 644 "${mount_point}/etc/apt/trusted.gpg.d/raspbian-archive-keyring.gpg" 2>/dev/null || true
-        ${SUDO} rm -f "${mount_point}/etc/apt/trusted.gpg"
+        "${SUDO[@]}" chmod 644 "${mount_point}/etc/apt/trusted.gpg.d/raspbian-archive-keyring.gpg" 2>/dev/null || true
+        "${SUDO[@]}" rm -f "${mount_point}/etc/apt/trusted.gpg"
         log_info "Legacy keyring migrated and removed"
     fi
 }
@@ -633,9 +632,9 @@ chroot_run() {
 
     # Use env to pass the proxy variables into the chroot environment
     if [[ ${#proxy_args[@]} -gt 0 ]]; then
-        ${SUDO} DEBIAN_FRONTEND=noninteractive chroot "$chroot_dir" env "${proxy_args[@]}" "$@"
+        "${SUDO[@]}" DEBIAN_FRONTEND=noninteractive chroot "$chroot_dir" env "${proxy_args[@]}" "$@"
     else
-        ${SUDO} DEBIAN_FRONTEND=noninteractive chroot "$chroot_dir" "$@"
+        "${SUDO[@]}" DEBIAN_FRONTEND=noninteractive chroot "$chroot_dir" "$@"
     fi
 }
 
@@ -769,8 +768,8 @@ cache_get() {
 
     if cache_exists "$cache_key"; then
         log_info "Using cached file: $cache_key"
-        ${SUDO} cp "$cache_path" "$destination"
-        ${SUDO} chown "${PIMELEON_USER}:${PIMELEON_GROUP}" "$destination"
+        "${SUDO[@]}" cp "$cache_path" "$destination"
+        "${SUDO[@]}" chown "${PIMELEON_USER}:${PIMELEON_GROUP}" "$destination"
         return 0
     else
         return 1
@@ -784,9 +783,9 @@ cache_put() {
     cache_path=$(get_cache_path "$cache_key")
 
     log_info "Caching file: $cache_key"
-    ${SUDO} mkdir -p "$(dirname "$cache_path")"
-    ${SUDO} cp "$source" "$cache_path"
-    ${SUDO} chown "${PIMELEON_USER}:${PIMELEON_GROUP}" "$cache_path"
+    "${SUDO[@]}" mkdir -p "$(dirname "$cache_path")"
+    "${SUDO[@]}" cp "$source" "$cache_path"
+    "${SUDO[@]}" chown "${PIMELEON_USER}:${PIMELEON_GROUP}" "$cache_path"
 }
 
 # Fetch source tarball from the registry (falling back to upstream if needed).

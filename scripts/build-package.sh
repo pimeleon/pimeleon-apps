@@ -34,9 +34,25 @@ cleanup_handler() {
         # Target the architecture-specific subdirectory
         safe_rm "build/${TARGET_ARCH}/build-${PKG_NAME}" || true
     fi
-    exit $exit_code
+    exit "$exit_code"
 }
 trap "cleanup_handler" EXIT ERR INT TERM PIPE
+
+check_package_in_registry() {
+    local pkg_name="$1"
+    local pkg_version="$2"
+    local arch="$3"
+    local registry_url="https://gitlab.pirouter.dev/api/v4/projects/20/packages/generic"
+    local gl_version="${arch}-${pkg_version}"
+    local package_url="${registry_url}/${pkg_name}/${gl_version}/${pkg_name}-${pkg_version}-${arch}-pimeleon.tar.gz"
+
+    local curl_opts=("-fsSL" "-k" "-I" "--max-time" "10")
+    if [[ -n "${CI_JOB_TOKEN:-}" ]]; then
+        curl_opts+=("-H" "JOB-TOKEN: ${CI_JOB_TOKEN}")
+    fi
+
+    curl "${curl_opts[@]}" "${package_url}" >/dev/null 2>&1
+}
 
 if [[ $# -lt 1 ]]; then
     die "Usage: $0 <package_name> [version]"
@@ -64,6 +80,14 @@ if [[ -z "${PKG_VERSION}" ]] || [[ "${PKG_VERSION}" == "latest" ]]; then
             die "Cannot resolve version for ${PKG_NAME}: upstream query failed and no version specified in package.env"
     fi
     log_info "Resolved ${PKG_NAME} to version ${PKG_VERSION}"
+fi
+
+# Skip build if matching version already exists in registry
+if [[ "${FORCE_BUILD:-0}" != "1" ]]; then
+    if check_package_in_registry "${PKG_NAME}" "${PKG_VERSION}" "${TARGET_ARCH}"; then
+        log_info "✓ ${PKG_NAME} v${PKG_VERSION} [${TARGET_ARCH}] already in registry — skipping build"
+        exit 0
+    fi
 fi
 
 log_section "Building ${PKG_NAME} (${PKG_VERSION}) [Arch: ${TARGET_ARCH}, Source: ${SOURCES}]"

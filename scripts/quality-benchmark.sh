@@ -15,7 +15,7 @@ MAX_SHELLCHECK_WARNINGS=5
 MAX_SEMGREP_ISSUES=0
 
 # Core scripts to scan
-SCRIPTS=$(find scripts packages -name "*.sh" -not -path "*/cache/*")
+mapfile -t SCRIPTS < <(find scripts packages -name "*.sh" -not -path "*/cache/*")
 
 echo -e "${BLUE}==================================================${NC}"
 echo -e "${BLUE}       PIMELEON CODE QUALITY BENCHMARK          ${NC}"
@@ -23,17 +23,17 @@ echo -e "${BLUE}==================================================${NC}"
 
 # 1. ShellCheck
 echo -e "\n${BLUE}[1/2] Running ShellCheck...${NC}"
-SC_OUTPUT=$(shellcheck -f json $SCRIPTS 2>/dev/null || true)
+SC_OUTPUT=$(shellcheck -f json "${SCRIPTS[@]}" 2>/dev/null || true)
 SC_ERRORS=$(echo "$SC_OUTPUT" | jq '[.[] | select(.level == "error")] | length' 2>/dev/null || echo 0)
 SC_WARNINGS=$(echo "$SC_OUTPUT" | jq '[.[] | select(.level == "warning")] | length' 2>/dev/null || echo 0)
 SC_DETAILS=""
 
 if [ "$SC_ERRORS" -gt 0 ]; then
-    SC_DETAILS=$(shellcheck $SCRIPTS 2>&1 || true)
+    SC_DETAILS=$(shellcheck "${SCRIPTS[@]}" 2>&1 || true)
     echo -e "${RED}✘ Failed: $SC_ERRORS ShellCheck errors found.${NC}"
     echo "$SC_DETAILS"
 elif [ "$SC_WARNINGS" -gt "$MAX_SHELLCHECK_WARNINGS" ]; then
-    SC_DETAILS=$(shellcheck $SCRIPTS 2>&1 || true)
+    SC_DETAILS=$(shellcheck "${SCRIPTS[@]}" 2>&1 || true)
     echo -e "${RED}✘ Failed: $SC_WARNINGS ShellCheck warnings (Threshold: $MAX_SHELLCHECK_WARNINGS).${NC}"
     echo "$SC_DETAILS"
 else
@@ -42,7 +42,7 @@ fi
 
 # 2. Semgrep
 echo -e "\n${BLUE}[2/2] Running Semgrep...${NC}"
-SEMGREP_OUTPUT=$(semgrep --config r/bash --exclude "patch-sources.sh" --json $SCRIPTS 2>/dev/null || true)
+SEMGREP_OUTPUT=$(semgrep --config r/bash --exclude "patch-sources.sh" --json "${SCRIPTS[@]}" 2>/dev/null || true)
 SEMGREP_CONFIG_ERRORS=$(echo "$SEMGREP_OUTPUT" | jq '[.errors[] | select(.message | test("Failed to download|invalid configuration"))] | length' 2>/dev/null || echo 0)
 SEMGREP_PARSE_ERRORS=$(echo "$SEMGREP_OUTPUT" | jq '[.errors[] | select(.message | test("Syntax error|Parse error"))] | length' 2>/dev/null || echo 0)
 SEMGREP_ISSUES=$(echo "$SEMGREP_OUTPUT" | jq '.results | length' 2>/dev/null || echo 0)
@@ -56,7 +56,7 @@ elif [ "$SEMGREP_PARSE_ERRORS" -gt 0 ]; then
     echo "$SEMGREP_OUTPUT" | jq -r '.errors[] | select(.message | test("Syntax error|Parse error")) | .message | split("\n")[0]' 2>/dev/null || true
 fi
 if [ "$SEMGREP_CONFIG_ERRORS" -eq 0 ] && [ "$SEMGREP_ISSUES" -gt "$MAX_SEMGREP_ISSUES" ]; then
-    SEMGREP_DETAILS=$(semgrep --config r/bash --exclude "patch-sources.sh" $SCRIPTS 2>&1 || true)
+    SEMGREP_DETAILS=$(semgrep --config r/bash --exclude "patch-sources.sh" "${SCRIPTS[@]}" 2>&1 || true)
     echo -e "${RED}✘ Failed: $SEMGREP_ISSUES security/pattern issues found.${NC}"
     echo "$SEMGREP_DETAILS"
 else

@@ -6,7 +6,7 @@
 # type: "github_release" | "gitlab_tag"
 # host: only used for gitlab_tag (default: gitlab.com)
 
-set -euo pipefail
+set -euxo pipefail
 
 REPO="${1:?repo required}"
 TYPE="${2:?type required}"

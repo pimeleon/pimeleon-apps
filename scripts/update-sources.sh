@@ -1,7 +1,7 @@
 #!/bin/bash
 # scripts/update-sources.sh — download and cache source tarballs/repos
 # Used by GitLab CI Cron to ensure sources are available in the local registry.
-set -euo pipefail
+set -euxo pipefail
 
 # Source common functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; source "${SCRIPT_DIR}/common.sh"

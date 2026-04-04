@@ -1,6 +1,6 @@
 #!/bin/bash
 # scripts/publish-builders.sh — Build and push a specific builder image to GitLab Registry
-set -euo pipefail
+set -euxo pipefail
 source "$(dirname "$0")/common.sh"
 
 if [[ $# -lt 1 ]]; then

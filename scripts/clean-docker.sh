@@ -2,7 +2,7 @@
 # Pimeleon App Factory - Selective Docker Cleanup
 # Optimized for individual package builds and registry management
 
-set -euo pipefail
+set -euxo pipefail
 
 RED="\033[0;31m"
 GREEN="\033[0;32m"

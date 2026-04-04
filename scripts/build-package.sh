@@ -1,7 +1,7 @@
 #!/bin/bash
 # Pimeleon Package Builder Orchestrator (Single Environment)
 # Always builds from production sources.
-set -euo pipefail
+set -euxo pipefail
 set -E
 
 # Source common functions

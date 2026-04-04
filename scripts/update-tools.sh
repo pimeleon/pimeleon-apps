@@ -1,6 +1,6 @@
 #!/bin/bash
 # Pimeleon Tools Downloader (Registry-Aware)
-set -euo pipefail
+set -euxo pipefail
 
 CACHE_DIR="${CACHE_DIR:-cache}"
 mkdir -p "${CACHE_DIR}/tools"

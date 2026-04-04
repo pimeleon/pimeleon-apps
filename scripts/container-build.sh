@@ -1,6 +1,6 @@
 #!/bin/bash
 # Pimeleon In-Container App Builder
-set -euo pipefail
+set -euxo pipefail
 source /scripts/common.sh
 
 # Configure APT proxy if present (e.g. for local builds)

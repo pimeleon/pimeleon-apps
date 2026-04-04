@@ -1,7 +1,7 @@
 #!/bin/bash
 # GitLab Registry Publisher
 # Optimized for compatibility with pi-router-build fetch logic
-set -euo pipefail
+set -euxo pipefail
 source "$(dirname "$0")/common.sh"
 
 log_info "Publishing binaries to GitLab Registry..."

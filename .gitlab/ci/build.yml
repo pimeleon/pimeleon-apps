@@ -23,8 +23,8 @@ build:all:
     expire_in: 1 week
     when: on_success
   rules:
-    # PRODUCTION: Full compilation ONLY on the actual master branch (Merge or Hotfix)
-    - if: '($CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "develop") && $CI_PIPELINE_SOURCE == "push"'
+    # PRODUCTION: Full compilation only on MR targeting master
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
 
 # Template for builder image creation
 .build_builder_base:
@@ -40,7 +40,7 @@ build:all:
       optional: true
   variables:
     DOCKER_HOST: unix:///var/run/docker.sock
-    GITLAB_FETCH_TOKEN: ${GITLAB_FETCH_TOKEN}
+    GITLAB_DEPLOY_TOKEN: ${GITLAB_DEPLOY_TOKEN}
   rules:
     # 1. Always run on master (ensure production images are fresh/pushed)
     - if: '$CI_COMMIT_BRANCH == "master"'

@@ -1,10 +1,12 @@
 #!/bin/bash
 # Pimeleon In-Container App Builder
-set -euxo pipefail
+set -euo pipefail
 source /scripts/common.sh
 
-# Configure APT proxy if present (e.g. for local builds)
-configure_chroot_apt_proxy ""
+# Configure APT proxy if present (e.g. for local builds) — requires root
+if [[ $(id -u) -eq 0 ]]; then
+    configure_chroot_apt_proxy ""
+fi
 
 if [[ $# -lt 1 ]]; then
     die "Usage: $0 <package_name> [version]"

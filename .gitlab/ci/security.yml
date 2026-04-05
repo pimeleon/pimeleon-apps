@@ -11,6 +11,8 @@
     TRIVY_NO_PROGRESS: "true"
     TRIVY_SEVERITY: "HIGH,CRITICAL"
     TRIVY_SCANNERS: "vuln,secret"
+    TRIVY_SKIP_DIRS: "/usr/local/go"
+    TRIVY_SKIP_FILES: "go.sum"
   tags:
     - linux
   cache:
@@ -46,9 +48,11 @@ security:scan-builder-armhf:
   needs:
     - job: build:builder-armhf
       optional: true
+  variables:
+    TRIVY_USERNAME: $CI_REGISTRY_USER
+    TRIVY_PASSWORD: $CI_REGISTRY_PASSWORD
   script:
     - IMAGE_NAME="${CI_REGISTRY_IMAGE}/builder-armhf:latest"
-    - docker pull "${IMAGE_NAME}"
     - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format json --output trivy-builder-armhf-report.json "${IMAGE_NAME}"
     - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format table --exit-code 1 "${IMAGE_NAME}"
   artifacts:
@@ -70,9 +74,11 @@ security:scan-builder-arm64:
   needs:
     - job: build:builder-arm64
       optional: true
+  variables:
+    TRIVY_USERNAME: $CI_REGISTRY_USER
+    TRIVY_PASSWORD: $CI_REGISTRY_PASSWORD
   script:
     - IMAGE_NAME="${CI_REGISTRY_IMAGE}/builder-arm64:latest"
-    - docker pull "${IMAGE_NAME}"
     - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format json --output trivy-builder-arm64-report.json "${IMAGE_NAME}"
     - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format table --exit-code 1 "${IMAGE_NAME}"
   artifacts:

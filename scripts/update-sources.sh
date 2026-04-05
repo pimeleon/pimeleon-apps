@@ -1,7 +1,7 @@
 #!/bin/bash
 # scripts/update-sources.sh — download and cache source tarballs/repos
 # Used by GitLab CI Cron to ensure sources are available in the local registry.
-set -euxo pipefail
+set -euo pipefail
 
 # Source common functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; source "${SCRIPT_DIR}/common.sh"
@@ -93,7 +93,7 @@ process_package() {
             privoxy)
                 log_info "Package ${PACKAGE_NAME} uses official Git repository, skipping registry upload for now."
                 ;;
-            pihole-FTL)
+            pihole)
                 log_info "Package ${PACKAGE_NAME} uses git clone, skipping registry upload for now."
                 ;;
             dnscrypt-proxy)

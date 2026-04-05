@@ -1,7 +1,7 @@
 #!/bin/bash
 # GitHub Release Uploader
 # Purpose: Upload all built binaries to a single GitHub Release for this version.
-set -euxo pipefail
+set -euo pipefail
 source "$(dirname "$0")/common.sh"
 
 if [[ -z "${RELEASE_TAG:-}" ]]; then

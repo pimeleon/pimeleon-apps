@@ -19,8 +19,9 @@ publish:gitlab:
       optional: true
   interruptible: true
   rules:
-    # PRODUCTION: Release artifacts ONLY on the actual master branch (Merge or Hotfix)
+    # PRODUCTION: Upload artifacts on push to master OR on MR targeting master
     - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
   script:
     - apk add --no-cache curl bash
     - ./scripts/ci-publish-gitlab.sh
@@ -45,7 +46,7 @@ release:production:
   variables:
     GIT_SSL_NO_VERIFY: "1"
     GITLAB_URL: "https://gitlab.pirouter.dev/api/v4"
-    GSG_TOKEN: $GITLAB_FETCH_TOKEN
+    GSG_TOKEN: $GITLAB_DEPLOY_TOKEN
     GSG_MINOR_COMMIT_TYPES: "feat,perf"
     GSG_PATCH_COMMIT_TYPES: "fix"
   script:

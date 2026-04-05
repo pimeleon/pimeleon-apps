@@ -1,7 +1,7 @@
 #!/bin/bash
 # Pimeleon Package Builder Orchestrator (Single Environment)
 # Always builds from production sources.
-set -euxo pipefail
+set -euo pipefail
 set -E
 
 # Source common functions
@@ -93,7 +93,13 @@ fi
 log_section "Building ${PKG_NAME} (${PKG_VERSION}) [Arch: ${TARGET_ARCH}, Source: ${SOURCES}]"
 
 # 1. Prepare Container (Command MUST be specified at creation)
-if [[ -n "${CI_REGISTRY_IMAGE:-}" ]]; then
+# Allow package.env to override the builder image via BUILD_IMAGE
+_pkg_build_image=$(grep -m1 '^BUILD_IMAGE=' "packages/${PKG_NAME}/package.env" 2>/dev/null \
+    | sed 's/^BUILD_IMAGE=//' | tr -d '"'"'" || true)
+
+if [[ -n "${_pkg_build_image:-}" ]]; then
+    IMAGE="${_pkg_build_image}"
+elif [[ -n "${CI_REGISTRY_IMAGE:-}" ]]; then
     IMAGE="${CI_REGISTRY_IMAGE}/builder-${TARGET_ARCH}:latest"
 else
     IMAGE="pimeleon-builder-${TARGET_ARCH}:latest"
@@ -101,7 +107,7 @@ fi
 
 # Isolate build path by architecture to prevent parallel build contamination
 LOCAL_BUILD_DIR="$(pwd)/build/${TARGET_ARCH}"
-mkdir -p "${LOCAL_BUILD_DIR}" logs
+mkdir -p "${LOCAL_BUILD_DIR}" logs output
 CONTAINER_ID=$(docker create \
     --privileged \
     --user "$(id -u):$(id -g)" \
@@ -109,6 +115,7 @@ CONTAINER_ID=$(docker create \
     -v "${LOCAL_BUILD_DIR}:/build" \
     -v "$(pwd)/cache:/cache" \
     -v "$(pwd)/logs:/logs" \
+    -v "$(pwd)/output:${OUTPUT_DIR}" \
     -e PACKAGE_NAME="${PKG_NAME}" \
     -e PACKAGE_VERSION="${PKG_VERSION}" \
     -e TARGET_ARCH="${TARGET_ARCH}" \
@@ -139,7 +146,5 @@ else
     docker start -a "${CONTAINER_ID}" 2>&1 | tee "logs/${PKG_NAME}-${TARGET_ARCH}.log"
 fi
 
-# 4. Extract Results
-log_info "Extracting results..."
-mkdir -p output
-docker cp "${CONTAINER_ID}:${OUTPUT_DIR}/." output/
+# 4. Results are written directly to the mounted output volume — no copy needed
+log_info "Build complete. Output written to $(pwd)/output/"

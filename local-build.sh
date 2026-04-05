@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Available packages list
-PACKAGES=("dnscrypt-proxy" "hostapd" "pihole-FTL" "privoxy" "tor" "wpa_supplicant")
+PACKAGES=("dnscrypt-proxy" "hostapd" "pihole" "privoxy" "tor" "wpa_supplicant")
 ARCHS=("armhf" "arm64")
 
 show_help() {
@@ -92,6 +92,7 @@ build_single_package() {
     TARGET_ARCH=$target_arch \
     SOURCES=local \
     APT_PROXY="${APT_PROXY:-}" \
+    QUIET="${QUIET:-1}" \
     ./scripts/build-package.sh "$pkg" "$version"
 }
 

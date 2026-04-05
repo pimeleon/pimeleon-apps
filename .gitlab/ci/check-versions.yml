@@ -11,17 +11,17 @@ check:upstream-versions:
   rules:
     # Run after an MR is merged into develop
     - if: '$CI_COMMIT_BRANCH == "develop" && $CI_PIPELINE_SOURCE == "push"'
-    # Always allow manual or scheduled checks
-    - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
   script:
-    - apk add --no-cache curl git python3 bash
+    - apk add --no-cache curl git bash jq
     - git config user.email "ci-version-bot@pirouter.dev"
     - git config user.name "CI Version Bot"
     - git remote set-url origin
-        "https://oauth2:${CI_PIMELEON_APPS_PUSH_TOKEN}@gitlab.pirouter.dev/pimeleon/pi-router-apps.git"
+     "https://oauth2:${CI_PIMELEON_APPS_PUSH_TOKEN}@gitlab.pirouter.dev/pimeleon/pi-router-apps.git"
     - |
       CHANGED=0
-      # Check for Go version updates
+      # Update tools version
       ./scripts/update-tools.sh
 
       for pkg_dir in packages/*/; do
@@ -41,33 +41,24 @@ check:upstream-versions:
           continue
         fi
 
-        for arch in ${SUPPORTED_ARCHES}; do
-          VERSION_FILE="versions/${PACKAGE_NAME}-${arch}.version"
-          CURRENT=$(cat "${VERSION_FILE}" 2>/dev/null || echo "none")
-          if [ "${LATEST}" != "${CURRENT}" ]; then
-            echo "Update: ${PACKAGE_NAME} ${arch}: ${CURRENT} -> ${LATEST}"
-            echo "${LATEST}" > "${VERSION_FILE}"
-            git add "${VERSION_FILE}"
-            CHANGED=1
-          else
-            echo "Up to date: ${PACKAGE_NAME} ${arch} @ ${LATEST}"
-          fi
-        done
+        if [ "${LATEST}" != "${PACKAGE_VERSION}" ]; then
+          echo "Update: ${PACKAGE_NAME}: ${PACKAGE_VERSION} -> ${LATEST}"
+          sed -i "s/^PACKAGE_VERSION=\".*\"/PACKAGE_VERSION=\"${LATEST}\"/" "${pkg_dir}/package.env"
+          git add "${pkg_dir}/package.env"
+          CHANGED=1
+        else
+          echo "Up to date: ${PACKAGE_NAME} @ ${LATEST}"
+        fi
       done
 
       if [ "${CHANGED}" = "1" ]; then
         # Ensure all new sources are pre-downloaded and cached in registry
         ./scripts/update-sources.sh
 
-        git commit -m "chore(versions): update upstream package versions"
+        git commit -m "chore(versions): update upstream package versions in package.env"
         git push origin HEAD:master
         echo "Pushed version updates — downstream pipeline will build affected packages"
       else
-        # Always ensure current sources are cached
         ./scripts/update-sources.sh
         echo "All packages up to date, no changes committed"
       fi
-  artifacts:
-    paths:
-      - versions/
-    expire_in: 1 week

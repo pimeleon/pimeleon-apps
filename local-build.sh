@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Available packages list
-PACKAGES=("dnscrypt-proxy" "hostapd" "pihole-FTL" "privoxy" "tor" "wpa_supplicant")
+PACKAGES=("dnscrypt-proxy" "hostapd" "pihole" "privoxy" "tor" "wpa_supplicant")
 ARCHS=("armhf" "arm64")
 
 show_help() {
@@ -50,17 +50,24 @@ build_single_package() {
     local target_arch=$2
     export CURRENT_PKG=$pkg
 
-    log_info "Synchronizing sources for $pkg..."
-    # This will check upstream, download if newer or missing, and update the version file
-    ./scripts/update-sources.sh "$pkg"
-
-    # Get current version from version file
-    local version_file="versions/${pkg}-${target_arch}.version"
-    if [ ! -f "${version_file}" ]; then
-        log_error "Version file not found: ${version_file}"
+    # Source the package environment to get the version
+    if [ ! -f "packages/${pkg}/package.env" ]; then
+        log_error "Package environment not found: packages/${pkg}/package.env"
         return 1
     fi
-    local version=$(cat "${version_file}")
+    source "packages/${pkg}/package.env"
+    local version="${PACKAGE_VERSION}"
+
+    if [[ -z "${version}" ]]; then
+        log_info "No version specified in package.env for $pkg. Resolving..."
+        # Optional: Sync sources if no version exists, or to update
+        ./scripts/update-sources.sh "$pkg"
+    fi
+
+    if [[ -z "${version}" ]]; then
+        log_error "Could not resolve version for ${pkg}"
+        return 1
+    fi
 
     # Check if image already exists in registry (pi-router-apps project ID: 20)
     local registry_url="https://gitlab.pirouter.dev/api/v4/projects/20/packages/generic"
@@ -85,7 +92,8 @@ build_single_package() {
     TARGET_ARCH=$target_arch \
     SOURCES=local \
     APT_PROXY="${APT_PROXY:-}" \
-    ./scripts/build-package.sh "$pkg"
+    QUIET="${QUIET:-1}" \
+    ./scripts/build-package.sh "$pkg" "$version"
 }
 
 if [[ "$PACKAGE" == "all" ]]; then

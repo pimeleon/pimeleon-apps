@@ -2,15 +2,18 @@
 # GitLab CI/CD — Global Pipeline Rules
 # Optimization: Prevents duplicate pipelines (Branch vs MR)
 workflow:
+  auto_cancel:
+    on_new_commit: interruptible
   rules:
-    # 1. If an MR is open, only run the Merge Request pipeline.
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    # 1. Always run branch pipeline on push to develop or master
+    - if: '$CI_COMMIT_BRANCH == "develop" && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"'
 
-    # 2. If no MR is open, run the branch pipeline for develop or master.
-    - if: '$CI_COMMIT_BRANCH == "develop" || $CI_COMMIT_BRANCH == "master"'
+    # 2. Run MR pipeline only for MRs targeting master (not develop)
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
 
     # 3. Run for web/scheduled triggers
     - if: '$CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "schedule"'
 
-    # 4. Otherwise, skip (avoids redundant feature branch pipelines)
+    # 4. Otherwise, skip
     - when: never

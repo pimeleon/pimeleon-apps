@@ -34,9 +34,25 @@ cleanup_handler() {
         # Target the architecture-specific subdirectory
         safe_rm "build/${TARGET_ARCH}/build-${PKG_NAME}" || true
     fi
-    exit $exit_code
+    exit "$exit_code"
 }
 trap "cleanup_handler" EXIT ERR INT TERM PIPE
+
+check_package_in_registry() {
+    local pkg_name="$1"
+    local pkg_version="$2"
+    local arch="$3"
+    local registry_url="https://gitlab.pirouter.dev/api/v4/projects/20/packages/generic"
+    local gl_version="${arch}-${pkg_version}"
+    local package_url="${registry_url}/${pkg_name}/${gl_version}/${pkg_name}-${pkg_version}-${arch}-pimeleon.tar.gz"
+
+    local curl_opts=("-fsSL" "-k" "-I" "--max-time" "10")
+    if [[ -n "${CI_JOB_TOKEN:-}" ]]; then
+        curl_opts+=("-H" "JOB-TOKEN: ${CI_JOB_TOKEN}")
+    fi
+
+    curl "${curl_opts[@]}" "${package_url}" >/dev/null 2>&1
+}
 
 if [[ $# -lt 1 ]]; then
     die "Usage: $0 <package_name> [version]"
@@ -47,22 +63,43 @@ PKG_VERSION="${2:-}"
 
 # JIT Version Resolution
 if [[ -z "${PKG_VERSION}" ]] || [[ "${PKG_VERSION}" == "latest" ]]; then
-    log_info "No version specified for ${PKG_NAME}. Resolving JIT from upstream..."
+    log_info "No version specified for ${PKG_NAME}. Resolving JIT from environment or upstream..."
     # shellcheck source=/dev/null
     source "packages/${PKG_NAME}/package.env"
-    PKG_VERSION=$(bash scripts/check-upstream.sh \
-        "${UPSTREAM_REPO}" \
-        "${UPSTREAM_TYPE}" \
-        "${UPSTREAM_GITLAB_HOST:-gitlab.com}" \
-        "${UPSTREAM_TAG_PREFIX:-}" \
-        "${UPSTREAM_TAG_PATTERN:-}" 2>/dev/null || echo "${PACKAGE_VERSION}")
+
+    # Use PACKAGE_VERSION from env as primary source
+    PKG_VERSION="${PACKAGE_VERSION:-}"
+
+    if [[ -z "${PKG_VERSION}" ]] || [[ "${PKG_VERSION}" == "latest" ]]; then
+        PKG_VERSION=$(bash scripts/check-upstream.sh \
+            "${UPSTREAM_REPO}" \
+            "${UPSTREAM_TYPE}" \
+            "${UPSTREAM_GITLAB_HOST:-gitlab.com}" \
+            "${UPSTREAM_TAG_PREFIX:-}" \
+            "${UPSTREAM_TAG_PATTERN:-}" 2>/dev/null) || \
+            die "Cannot resolve version for ${PKG_NAME}: upstream query failed and no version specified in package.env"
+    fi
     log_info "Resolved ${PKG_NAME} to version ${PKG_VERSION}"
+fi
+
+# Skip build if matching version already exists in registry
+if [[ "${FORCE_BUILD:-0}" != "1" ]]; then
+    if check_package_in_registry "${PKG_NAME}" "${PKG_VERSION}" "${TARGET_ARCH}"; then
+        log_info "✓ ${PKG_NAME} v${PKG_VERSION} [${TARGET_ARCH}] already in registry — skipping build"
+        exit 0
+    fi
 fi
 
 log_section "Building ${PKG_NAME} (${PKG_VERSION}) [Arch: ${TARGET_ARCH}, Source: ${SOURCES}]"
 
 # 1. Prepare Container (Command MUST be specified at creation)
-if [[ -n "${CI_REGISTRY_IMAGE:-}" ]]; then
+# Allow package.env to override the builder image via BUILD_IMAGE
+_pkg_build_image=$(grep -m1 '^BUILD_IMAGE=' "packages/${PKG_NAME}/package.env" 2>/dev/null \
+    | sed 's/^BUILD_IMAGE=//' | tr -d '"'"'" || true)
+
+if [[ -n "${_pkg_build_image:-}" ]]; then
+    IMAGE="${_pkg_build_image}"
+elif [[ -n "${CI_REGISTRY_IMAGE:-}" ]]; then
     IMAGE="${CI_REGISTRY_IMAGE}/builder-${TARGET_ARCH}:latest"
 else
     IMAGE="pimeleon-builder-${TARGET_ARCH}:latest"
@@ -70,7 +107,7 @@ fi
 
 # Isolate build path by architecture to prevent parallel build contamination
 LOCAL_BUILD_DIR="$(pwd)/build/${TARGET_ARCH}"
-mkdir -p "${LOCAL_BUILD_DIR}" logs
+mkdir -p "${LOCAL_BUILD_DIR}" logs output
 CONTAINER_ID=$(docker create \
     --privileged \
     --user "$(id -u):$(id -g)" \
@@ -78,6 +115,7 @@ CONTAINER_ID=$(docker create \
     -v "${LOCAL_BUILD_DIR}:/build" \
     -v "$(pwd)/cache:/cache" \
     -v "$(pwd)/logs:/logs" \
+    -v "$(pwd)/output:${OUTPUT_DIR}" \
     -e PACKAGE_NAME="${PKG_NAME}" \
     -e PACKAGE_VERSION="${PKG_VERSION}" \
     -e TARGET_ARCH="${TARGET_ARCH}" \
@@ -99,6 +137,8 @@ docker cp scripts/. "${CONTAINER_ID}:/scripts/"
 docker cp "packages/${PKG_NAME}/." "${CONTAINER_ID}:/package/"
 
 # 3. Execute Build (Start and Attach)
+# Remove stale log file (may be root-owned from a pre-`--user` run)
+rm -f "logs/${PKG_NAME}-${TARGET_ARCH}.log" 2>/dev/null || true
 log_info "Logging build output to logs/${PKG_NAME}-${TARGET_ARCH}.log"
 if [[ "${QUIET:-0}" == "1" ]]; then
     docker start -a "${CONTAINER_ID}" > "logs/${PKG_NAME}-${TARGET_ARCH}.log" 2>&1
@@ -106,7 +146,5 @@ else
     docker start -a "${CONTAINER_ID}" 2>&1 | tee "logs/${PKG_NAME}-${TARGET_ARCH}.log"
 fi
 
-# 4. Extract Results
-log_info "Extracting results..."
-mkdir -p output
-docker cp "${CONTAINER_ID}:${OUTPUT_DIR}/." output/
+# 4. Results are written directly to the mounted output volume — no copy needed
+log_info "Build complete. Output written to $(pwd)/output/"

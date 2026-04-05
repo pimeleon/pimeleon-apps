@@ -17,7 +17,7 @@ if [[ "${UPSTREAM_REPO}" == *.git ]]; then
     rm -rf "${SRC_DIR}"
     # Git tags use underscores: v_4_1_0
     # Note: --depth 1 is omitted because upstream server uses legacy HTTP transport
-    TAG_NAME="v_$(echo ${VERSION} | tr '.' '_')"
+    TAG_NAME="v_$(echo "${VERSION}" | tr '.' '_')"
     git clone --branch "${TAG_NAME}" "${UPSTREAM_REPO}" "${SRC_DIR}"
 else
     TARBALL="privoxy-${VERSION}-stable-src.tar.gz"
@@ -50,7 +50,7 @@ export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1
 
 log_info "Building privoxy for ${TARGET_ARCH} using triple ${HOST_TRIPLE}..."
 
-./configure --host="${HOST_TRIPLE}" ${CONFIGURE_FLAGS}
+./configure --host="${HOST_TRIPLE}" ${_CONFIGURE_FLAGS}
 
 make -j"$(nproc)"
 
@@ -64,13 +64,13 @@ STRIP_TOOL="${HOST_TRIPLE}-strip"
 bin="usr/local/sbin/privoxy"
 if [[ -f "${INSTALL_DIR}/${bin}" ]]; then
     log_info "Stripping ${bin}"
-    ${STRIP_TOOL} "${INSTALL_DIR}/${bin}" || true
+    "${STRIP_TOOL}" "${INSTALL_DIR}/${bin}" || true
 fi
 
 # Repack
 OUTPUT_ARCHIVE="${OUTPUT_DIR}/${PACKAGE_NAME}-${VERSION}-${TARGET_ARCH}-pimeleon.tar.gz"
 log_info "Packaging binaries..."
-tar czf "${OUTPUT_ARCHIVE}" -C "${INSTALL_DIR}" ${OUTPUT_INCLUDES}
+tar czf "${OUTPUT_ARCHIVE}" -C "${INSTALL_DIR}" ${_OUTPUT_INCLUDES}
 
 # Generate checksum
 sha256sum "${OUTPUT_ARCHIVE}" | tee "${OUTPUT_ARCHIVE}.sha256"

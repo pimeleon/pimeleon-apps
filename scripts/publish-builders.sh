@@ -14,7 +14,7 @@ COMMIT_SHA="${CI_COMMIT_SHA:-local}"
 IMAGE_NAME="builder-${ARCH}"
 TAG_LATEST="${REGISTRY_BASE}/${IMAGE_NAME}:latest"
 TAG_SHA="${REGISTRY_BASE}/${IMAGE_NAME}:${COMMIT_SHA}"
-DOCKERFILE="containers/builder-${ARCH}/Dockerfile"
+DOCKERFILE="Dockerfile.builder"
 
 log_info "Building ${IMAGE_NAME}..."
 

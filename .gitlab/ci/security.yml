@@ -11,6 +11,8 @@
     TRIVY_NO_PROGRESS: "true"
     TRIVY_SEVERITY: "HIGH,CRITICAL"
     TRIVY_SCANNERS: "vuln,secret"
+    TRIVY_SKIP_DIRS: "/usr/local/go"
+    TRIVY_SKIP_FILES: "go.sum"
   tags:
     - linux
   cache:
@@ -18,31 +20,8 @@
     paths:
       - .trivycache/
 
-.trivy_image_base:
-  stage: test
-  image: docker:latest
-  services:
-    - docker:dind
-  allow_failure: false
-  tags:
-    - containers
-  variables:
-    DOCKER_HOST: unix:///var/run/docker.sock
-    TRIVY_CACHE_DIR: ".trivycache/"
-    TRIVY_NO_PROGRESS: "true"
-    TRIVY_SEVERITY: "HIGH,CRITICAL"
-    TRIVY_SCANNERS: "vuln,secret"
-  before_script:
-    - apk add --no-cache curl
-    - echo "${CI_JOB_TOKEN}" | docker login "${CI_REGISTRY}" -u gitlab-ci-token --password-stdin
-    - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-  cache:
-    key: trivy-cache
-    paths:
-      - .trivycache/
-
 security:gitleaks:
-  stage: security
+  stage: prepare
   image:
     name: ghcr.io/gitleaks/gitleaks:latest
     entrypoint: [""]
@@ -56,41 +35,24 @@ security:gitleaks:
       - gitleaks-report.json
     expire_in: 1 week
     when: on_success
-  interruptible: true
   rules:
     # PRELIMINARY: Only check secrets on Develop pushes and MRs targeting Develop
     - if: '$CI_COMMIT_BRANCH == "develop" && $CI_PIPELINE_SOURCE == "push"'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
 
-security:trivy:repo:
+security:scan-builder-armhf:
   extends: .trivy_base
   stage: security
-  tags:
-    - linux
-  script:
-    - trivy fs --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format json --output trivy-repo-report.json .
-    - trivy fs --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format table --exit-code 1 .
-  artifacts:
-    paths:
-      - trivy-repo-report.json
-    expire_in: 1 week
-    when: always
-  interruptible: true
-  rules:
-    # FINAL GATE: Check vulnerabilities on MRs to Master or direct Master push
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
-    - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"'
-
-security:scan-builder-armhf:
-  extends: .trivy_image_base
   tags:
     - linux
   needs:
     - job: build:builder-armhf
       optional: true
+  variables:
+    TRIVY_USERNAME: $CI_REGISTRY_USER
+    TRIVY_PASSWORD: $CI_REGISTRY_PASSWORD
   script:
     - IMAGE_NAME="${CI_REGISTRY_IMAGE}/builder-armhf:latest"
-    - docker pull "${IMAGE_NAME}"
     - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format json --output trivy-builder-armhf-report.json "${IMAGE_NAME}"
     - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format table --exit-code 1 "${IMAGE_NAME}"
   artifacts:
@@ -105,15 +67,18 @@ security:scan-builder-armhf:
     - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"'
 
 security:scan-builder-arm64:
-  extends: .trivy_image_base
+  extends: .trivy_base
+  stage: security
   tags:
     - linux
   needs:
     - job: build:builder-arm64
       optional: true
+  variables:
+    TRIVY_USERNAME: $CI_REGISTRY_USER
+    TRIVY_PASSWORD: $CI_REGISTRY_PASSWORD
   script:
     - IMAGE_NAME="${CI_REGISTRY_IMAGE}/builder-arm64:latest"
-    - docker pull "${IMAGE_NAME}"
     - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format json --output trivy-builder-arm64-report.json "${IMAGE_NAME}"
     - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format table --exit-code 1 "${IMAGE_NAME}"
   artifacts:

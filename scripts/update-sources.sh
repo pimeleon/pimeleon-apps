@@ -56,6 +56,9 @@ process_package() {
         # shellcheck source=/dev/null
         source "${pkg_dir}/package.env"
 
+        # Read current tracked version from env
+        local current_version="${PACKAGE_VERSION:-}"
+
         # Determine latest version from upstream
         log_info "Checking upstream for ${PACKAGE_NAME}..."
         local latest_version
@@ -64,18 +67,11 @@ process_package() {
             "${UPSTREAM_TYPE}" \
             "${UPSTREAM_GITLAB_HOST:-gitlab.com}" \
             "${UPSTREAM_TAG_PREFIX:-}" \
-            "${UPSTREAM_TAG_PATTERN:-}" 2>/dev/null || echo "${PACKAGE_VERSION}")
+            "${UPSTREAM_TAG_PATTERN:-}" 2>/dev/null || echo "${current_version}")
 
         if [[ -z "${latest_version}" ]]; then
-            log_warn "Could not determine upstream version for ${PACKAGE_NAME}, falling back to ${PACKAGE_VERSION}"
-            latest_version="${PACKAGE_VERSION}"
-        fi
-
-        # Determine version (use tracking file if exists, otherwise package.env)
-        local current_version="${PACKAGE_VERSION}"
-        local version_file="versions/${PACKAGE_NAME}-armhf.version"
-        if [ -f "${version_file}" ]; then
-            current_version=$(cat "${version_file}")
+            log_warn "Could not determine upstream version for ${PACKAGE_NAME}, falling back to ${current_version:-unknown}"
+            latest_version="${current_version}"
         fi
 
         case "${PACKAGE_NAME}" in
@@ -97,7 +93,7 @@ process_package() {
             privoxy)
                 log_info "Package ${PACKAGE_NAME} uses official Git repository, skipping registry upload for now."
                 ;;
-            pihole-FTL)
+            pihole)
                 log_info "Package ${PACKAGE_NAME} uses git clone, skipping registry upload for now."
                 ;;
             dnscrypt-proxy)
@@ -107,14 +103,6 @@ process_package() {
                 log_warn "Unknown package type for source update: ${PACKAGE_NAME}"
                 ;;
         esac
-
-        # Update tracking files if version changed
-        if [[ "${latest_version}" != "${current_version}" ]]; then
-            log_info "Updating version files for ${PACKAGE_NAME}: ${current_version} -> ${latest_version}"
-            for arch in ${SUPPORTED_ARCHES}; do
-                echo "${latest_version}" > "versions/${PACKAGE_NAME}-${arch}.version"
-            done
-        fi
     )
 }
 

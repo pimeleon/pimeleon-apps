@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Available packages list
-PACKAGES=("dnscrypt-proxy" "hostapd" "pihole-FTL" "privoxy" "tor" "wpa_supplicant")
+PACKAGES=("dnscrypt-proxy" "hostapd" "pihole" "privoxy" "tor" "wpa_supplicant")
 
 show_help() {
     cat << EOF
@@ -19,7 +19,7 @@ Options:
 
 Examples:
   $(basename "$0") tor
-  $(basename "$0") pihole-FTL
+  $(basename "$0") pihole
 EOF
 }
 

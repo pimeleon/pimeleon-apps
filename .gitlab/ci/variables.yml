@@ -1,5 +1,8 @@
 ---
 # GitLab CI/CD — Global Variables
+default:
+  interruptible: true
+
 variables:
   GIT_DEPTH: 0
   DEFAULT_ARCH: "armhf"

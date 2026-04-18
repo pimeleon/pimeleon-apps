@@ -1,31 +1,6 @@
 ---
 # GitLab CI/CD — Build & Verification
 
-build:all:
-  stage: build:apps
-  image: docker:latest
-  tags:
-    - containers
-  interruptible: true
-  variables:
-    DOCKER_HOST: unix:///var/run/docker.sock
-  parallel:
-    matrix:
-      - TARGET_ARCH: ["armhf", "arm64"]
-  script:
-    - apk add --no-cache bash curl
-    - chmod +x local-build.sh
-    - ./local-build.sh all $TARGET_ARCH
-  artifacts:
-    paths:
-      - output/
-      - logs/
-    expire_in: 1 week
-    when: on_success
-  rules:
-    # PRODUCTION: Full compilation only on MR targeting master
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
-
 # Template for builder image creation
 .build_builder_base:
   image: docker:latest
@@ -51,9 +26,8 @@ build:all:
       changes:
         - Dockerfile.builder
         - .env
-        - .github/**/*
-        - .gitlab/**/*
         - scripts/*
+        - Makefile
 
     # 3. Always run on manual trigger from web/schedule
     - if: '$CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "schedule"'
@@ -64,12 +38,12 @@ build:all:
 
 build:builder-armhf:
   extends: .build_builder_base
-  stage: build:builder
+  stage: build-builder
   variables:
     TARGET_ARCH: "armhf"
 
 build:builder-arm64:
   extends: .build_builder_base
-  stage: build:builder
+  stage: build-builder
   variables:
     TARGET_ARCH: "arm64"

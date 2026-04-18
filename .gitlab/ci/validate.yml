@@ -1,0 +1,55 @@
+---
+# GitLab CI/CD — Linting
+# Purpose: Preliminary code quality checks for the development phase.
+
+security:gitleaks:
+  stage: validate
+  image:
+    name: ghcr.io/gitleaks/gitleaks:latest
+    entrypoint: [""]
+  allow_failure: false
+  tags:
+    - linux
+  script:
+    - .gitlab/scripts/ci-gitleaks.sh
+  artifacts:
+    paths:
+      - gitleaks-report.json
+    expire_in: 1 week
+    when: on_success
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      when: always
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^(develop|master)$/'
+
+
+lint:shell:
+  stage: validate
+  image: alpine:latest
+  tags:
+    - linux
+  needs:
+    - job: "security:gitleaks"
+      optional: true
+  interruptible: true
+  script:
+    - .gitlab/scripts/ci-lint-shell.sh
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^(develop|master)$/'
+    - when: never
+
+lint:yaml:
+  stage: validate
+  image: alpine:latest
+  tags:
+    - linux
+  needs: []
+  interruptible: true
+  script:
+    - .gitlab/scripts/ci-lint-yaml.sh
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^(develop|master)$/'
+    - when: never

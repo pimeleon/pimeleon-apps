@@ -86,7 +86,7 @@ jobs:
       - name: Lint (Shell/YAML)
         if: matrix.check == 'lint'
         run: |
-          sudo apt-get install -y shellcheck yamllint jq python3 python3-pip &>/dev/null
+          sudo apt-get install -y -q shellcheck yamllint jq python3 python3-pip &>/dev/null
           yamllint -c .yamllint .
           python3 -m pip install --quiet semgrep
           ./scripts/quality-benchmark.sh
@@ -132,7 +132,7 @@ jobs:
           export CI_REGISTRY_IMAGE="ghcr.io/${LOWER_REPO}"
 
           # Install dependencies for the orchestrator script
-          sudo apt-get install -y bash curl
+          sudo apt-get install -y -q bash curl
 
           # Run the build orchestrator (same as GitLab)
           ./local-build.sh all armhf

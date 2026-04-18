@@ -20,26 +20,6 @@
     paths:
       - .trivycache/
 
-security:gitleaks:
-  stage: prepare
-  image:
-    name: ghcr.io/gitleaks/gitleaks:latest
-    entrypoint: [""]
-  allow_failure: false
-  tags:
-    - linux
-  script:
-    - gitleaks detect --source . --verbose --config gitleaks.toml --report-path gitleaks-report.json --staged || gitleaks detect --source . --verbose --config gitleaks.toml --report-path gitleaks-report.json
-  artifacts:
-    paths:
-      - gitleaks-report.json
-    expire_in: 1 week
-    when: on_success
-  rules:
-    # PRELIMINARY: Only check secrets on Develop pushes and MRs targeting Develop
-    - if: '$CI_COMMIT_BRANCH == "develop" && $CI_PIPELINE_SOURCE == "push"'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
-
 security:scan-builder-armhf:
   extends: .trivy_base
   stage: security
@@ -52,9 +32,7 @@ security:scan-builder-armhf:
     TRIVY_USERNAME: $CI_REGISTRY_USER
     TRIVY_PASSWORD: $CI_REGISTRY_PASSWORD
   script:
-    - IMAGE_NAME="${CI_REGISTRY_IMAGE}/builder-armhf:latest"
-    - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format json --output trivy-builder-armhf-report.json "${IMAGE_NAME}"
-    - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format table --exit-code 1 "${IMAGE_NAME}"
+    - .gitlab/scripts/ci-trivy-scan.sh armhf
   artifacts:
     paths:
       - trivy-builder-armhf-report.json
@@ -78,9 +56,7 @@ security:scan-builder-arm64:
     TRIVY_USERNAME: $CI_REGISTRY_USER
     TRIVY_PASSWORD: $CI_REGISTRY_PASSWORD
   script:
-    - IMAGE_NAME="${CI_REGISTRY_IMAGE}/builder-arm64:latest"
-    - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format json --output trivy-builder-arm64-report.json "${IMAGE_NAME}"
-    - trivy image --ignore-unfixed --scanners ${TRIVY_SCANNERS} --format table --exit-code 1 "${IMAGE_NAME}"
+    - .gitlab/scripts/ci-trivy-scan.sh arm64
   artifacts:
     paths:
       - trivy-builder-arm64-report.json

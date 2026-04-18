@@ -12,7 +12,7 @@ log_info "Uploading binaries to GitHub Release ${RELEASE_TAG}..."
 
 if ! gh release view "${RELEASE_TAG}" > /dev/null 2>&1; then
     log_info "Release ${RELEASE_TAG} not found. Creating it..."
-    gh release create "${RELEASE_TAG}" --generate-notes --title "pi-router-apps ${RELEASE_TAG}"
+    gh release create "${RELEASE_TAG}" --generate-notes --title "pimeleon-apps ${RELEASE_TAG}"
 fi
 
 for pkg in output/*-pimeleon.tar.gz; do

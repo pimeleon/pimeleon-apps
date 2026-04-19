@@ -34,6 +34,7 @@ lint:shell:
   script:
     - .gitlab/scripts/ci-lint-shell.sh
   rules:
+    - if: '$CI_COMMIT_TAG'
     - if: '$CI_PIPELINE_SOURCE == "push"'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - when: never
@@ -48,6 +49,7 @@ lint:yaml:
   script:
     - .gitlab/scripts/ci-lint-yaml.sh
   rules:
+    - if: '$CI_COMMIT_TAG'
     - if: '$CI_PIPELINE_SOURCE == "push"'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - when: never

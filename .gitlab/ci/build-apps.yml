@@ -22,13 +22,10 @@ build:apps:
     expire_in: 1 week
     when: on_success
   rules:
-    # Build release artifacts on master pushes, but only when app-relevant inputs changed
-    - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"'
+    # Build release artifacts on develop and master pushes, but only when app-relevant inputs changed
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^(develop|master)$/'
       changes: !reference [.app_rebuild_globs, changes]
 
-    # Verify production-bound app changes during merge requests to master
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
+    # Verify production-bound app changes during merge requests to develop and master
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^(develop|master)$/'
       changes: !reference [.app_rebuild_globs, changes]
-
-    # Allow manual or scheduled rebuilds even without file diffs
-    - if: '$CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "schedule"'

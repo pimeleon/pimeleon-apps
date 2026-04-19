@@ -30,7 +30,7 @@ publish:gitlab:
 # Generate production semver tag from conventional commits since last release
 tag:production:
   stage: tag
-  image: registry.gitlab.com/juhani/go-semrel-gitlab:v0.21.1
+  image: node:lts-slim
   tags:
     - linux
   cache: {}
@@ -48,13 +48,13 @@ tag:production:
       when: on_success
     - when: never
   variables:
-    GIT_SSL_NO_VERIFY: "1"
     GITLAB_URL: "https://gitlab.pirouter.dev/api/v4"
-    GSG_TOKEN: $CI_PIMELEON_APPS_PUSH_TOKEN
-    GSG_MINOR_COMMIT_TYPES: "feat,perf"
-    GSG_PATCH_COMMIT_TYPES: "fix"
+    GITLAB_TOKEN: $CI_PIMELEON_APPS_PUSH_TOKEN
+  before_script:
+    - apt-get update && apt-get install -y git ca-certificates
+    - npm install -g semantic-release @semantic-release/gitlab
   script:
-    - .gitlab/scripts/ci-release.sh
+    - semantic-release
 
 # Trigger GitHub Actions after a successful production release
 trigger:github:

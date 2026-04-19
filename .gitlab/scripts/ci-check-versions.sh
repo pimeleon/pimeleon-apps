@@ -1,7 +1,15 @@
 #!/bin/sh
-set -eu
+apk add --no-cache curl git bash jq 2>/dev/null
+[ "${BASH_VERSION:-}" ] || exec bash "$0" "$@"
+set -euo pipefail
 
-apk add --no-cache curl git bash jq
+# shellcheck source=scripts/lib-logging.sh
+source scripts/lib-logging.sh
+
+if [ -z "${CI_PIMELEON_APPS_PUSH_TOKEN:-}" ]; then
+  log_error "CI_PIMELEON_APPS_PUSH_TOKEN is not set"
+  exit 1
+fi
 
 git config user.email "ci-version-bot@pirouter.dev"
 git config user.name "CI Version Bot"
@@ -25,7 +33,7 @@ for pkg_dir in packages/*/; do
     "${UPSTREAM_TAG_PATTERN:-}" 2>/dev/null || true)
 
   if [ -z "${LATEST}" ]; then
-    echo "[WARN] Could not determine upstream version for ${PACKAGE_NAME}, skipping"
+    log_warn "Could not determine upstream version for ${PACKAGE_NAME}, skipping"
     continue
   fi
 

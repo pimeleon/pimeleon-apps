@@ -1,8 +1,11 @@
-#!/usr/bin/env sh
-set -e
+#!/bin/bash
+set -euo pipefail
+
+# shellcheck source=scripts/lib-logging.sh
+source scripts/lib-logging.sh
 
 if [ -z "${GSG_TOKEN:-}" ]; then
-  echo "[ERROR] GSG_TOKEN is not set — cannot authenticate with GitLab API" >&2
+  log_error "GSG_TOKEN is not set — cannot authenticate with GitLab API"
   exit 1
 fi
 

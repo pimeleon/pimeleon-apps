@@ -32,6 +32,12 @@ release:production:
     - linux
   cache: {}
   needs:
+    - job: security:gitleaks
+    - job: lint:shell
+    - job: lint:yaml
+    - job: check:upstream-versions
+    - job: security:scan-builder-armhf
+    - job: security:scan-builder-arm64
     - job: publish:gitlab
       optional: true
   rules:

@@ -33,6 +33,7 @@ release:production:
   cache: {}
   needs:
     - job: publish:gitlab
+      optional: true
   rules:
     - if: '$CI_COMMIT_TAG'
       when: never

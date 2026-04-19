@@ -9,3 +9,4 @@ stages:
   - security
   - publish
   - release
+  - downstream

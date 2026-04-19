@@ -27,6 +27,7 @@ security:scan-builder-armhf:
   tags:
     - linux
   needs:
+    - job: security:gitleaks
     - job: build:builder-armhf
       optional: true
   variables:
@@ -50,6 +51,7 @@ security:scan-builder-arm64:
   tags:
     - linux
   needs:
+    - job: security:gitleaks
     - job: build:builder-arm64
       optional: true
   variables:

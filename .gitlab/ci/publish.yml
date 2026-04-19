@@ -36,6 +36,10 @@ tag:production:
   cache: {}
   before_script:
     - echo "Acquire::http::Proxy \"http://${APT_PROXY}/\";" > /etc/apt/apt.conf.d/01proxy
+    - echo "deb http://archive.debian.org/debian buster main" > /etc/apt/sources.list
+    - echo "deb http://archive.debian.org/debian-security buster/updates main" >> /etc/apt/sources.list
+    - apt-get update -qq 2>&1 | tail -1
+    - DEBIAN_FRONTEND=noninteractive apt-get install -qq -y curl > /dev/null 2>&1
   needs:
     - job: security:gitleaks
     - job: lint:shell
@@ -72,8 +76,8 @@ trigger:github:
   before_script:
     - apk add --no-cache curl
   script:
-    - chmod +x .gitlab/scripts/trigger-github.sh
-    - .gitlab/scripts/trigger-github.sh
+    - chmod +x .gitlab/scripts/ci-trigger-github.sh
+    - .gitlab/scripts/ci-trigger-github.sh
 
 # Create GitLab Release on version tag
 release:create:

@@ -6,3 +6,20 @@ default:
 variables:
   GIT_DEPTH: 0
   DEFAULT_ARCH: "armhf"
+
+.builder_rebuild_globs:
+  changes:
+    - Dockerfile.builder
+    - .env
+    - scripts/**/*
+    - Makefile
+
+.app_rebuild_globs:
+  changes:
+    - Dockerfile.builder
+    - .dockerignore
+    - .env
+    - local-build.sh
+    - Makefile
+    - packages/**/*
+    - scripts/**/*

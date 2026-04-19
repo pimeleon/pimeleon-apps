@@ -9,11 +9,14 @@ workflow:
     - if: '$CI_COMMIT_BRANCH == "develop" && $CI_PIPELINE_SOURCE == "push"'
     - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"'
 
-    # 2. Run MR pipeline only for MRs targeting master (not develop)
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
+    # 2. Run on push to feature/refactor/fix/chore branches
+    - if: '$CI_COMMIT_BRANCH =~ /^(feature|refactor|fix|bugfix|hotfix|chore)\/.*/ && $CI_PIPELINE_SOURCE == "push"'
 
-    # 3. Run for web/scheduled triggers
+    # 4. Run MR pipeline for MRs targeting develop or master
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^(develop|master)$/'
+
+    # 5. Run for web/scheduled triggers
     - if: '$CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "schedule"'
 
-    # 4. Otherwise, skip
+    # 6. Otherwise, skip
     - when: never

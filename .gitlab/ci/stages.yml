@@ -1,11 +1,10 @@
 ---
 # GitLab CI/CD — Stage Definitions
-# Realigned with legacy c79c26e6 sequence
 stages:
   - prepare
-  - lint
-  - build:builder
-  - build:apps
+  - validate
+  - build-builder
+  - build-apps
   - test
   - security
   - publish

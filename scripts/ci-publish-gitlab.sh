@@ -63,17 +63,19 @@ for pkg in output/*-pimeleon.tar.gz; do
         if [[ $CHECKSUM_EXIT -eq 0 ]]; then
             log_info "  -> ${BASENAME}.sha256 [HTTP ${CHECKSUM_STATUS}]"
         else
-            log_warn "  -> Failed to upload checksum for ${BASENAME} (curl exit: ${CHECKSUM_EXIT})"
+            log_error "  -> Failed to upload checksum for ${BASENAME} (curl exit: ${CHECKSUM_EXIT})"
+            exit 1
         fi
     fi
 done
 
 if [[ $PUBLISH_COUNT -eq 0 && $FAIL_COUNT -eq 0 ]]; then
-    log_warn "No artifacts found in output/. Contents:"
+    log_error "No artifacts found in output/. Contents:"
     ls -lh output/ 2>/dev/null || log_warn "  output/ directory does not exist"
+    exit 1
 fi
 
-log_info "Publish summary: ${PUBLISH_COUNT} uploaded, ${FAIL_COUNT} failed"
+log_error "Publish summary: ${PUBLISH_COUNT} uploaded, ${FAIL_COUNT} failed"
 if [[ $FAIL_COUNT -gt 0 ]]; then
     die "One or more uploads failed"
 fi

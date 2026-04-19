@@ -48,13 +48,13 @@ tag:production:
       when: on_success
     - when: never
   variables:
-    GITLAB_URL: "https://gitlab.pirouter.dev/api/v4"
+    GITLAB_URL: "https://gitlab.pirouter.dev"
     GITLAB_TOKEN: $CI_PIMELEON_APPS_PUSH_TOKEN
   before_script:
     - apt-get update && apt-get install -y git ca-certificates
-    - npm install -g semantic-release @semantic-release/gitlab
+    - npm install -g semantic-release @semantic-release/gitlab @semantic-release/commit-analyzer @semantic-release/release-notes-generator
   script:
-    - semantic-release
+    - semantic-release --extends @semantic-release/gitlab
 
 # Trigger GitHub Actions after a successful production release
 trigger:github:

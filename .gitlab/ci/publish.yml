@@ -34,6 +34,8 @@ tag:production:
   tags:
     - linux
   cache: {}
+  before_script:
+    - echo "Acquire::http::Proxy \"http://${APT_PROXY}/\";" > /etc/apt/apt.conf.d/01proxy
   needs:
     - job: security:gitleaks
     - job: lint:shell

@@ -1,0 +1,9 @@
+FROM alpine:latest
+
+# Configure APT proxy (though Alpine uses APK, keeping for compatibility if tools change)
+RUN echo "http_proxy=http://192.168.76.5:3142" >> /etc/environment
+
+RUN apk add --no-cache     bash     git     curl     jq     sqlite3
+
+WORKDIR /app
+ENTRYPOINT ["/bin/bash"]

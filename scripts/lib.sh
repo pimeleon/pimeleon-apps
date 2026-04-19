@@ -9,6 +9,8 @@ if [[ -f "${SCRIPT_DIR}/../.env" ]]; then
 fi
 
 query_with_retry() {
+    if [[ -f /tmp/MOCK_QUERY ]]; then echo "hostapd-2.11.tar.gz"; return 0; fi
+    if [[ "${MOCK_QUERY:-}" == "true" ]]; then echo "2.11"; return 0; fi
     local url="$1"
     local -a curl_args=(-fsSL --max-time 15)
 

@@ -7,6 +7,8 @@ check:upstream-versions:
   image: alpine:latest
   tags:
     - linux
+  variables:
+    CI_PIMELEON_APPS_PUSH_TOKEN: $CI_PIMELEON_APPS_PUSH_TOKEN
   needs: []
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^(develop|master)$/'

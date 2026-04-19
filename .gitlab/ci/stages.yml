@@ -8,5 +8,5 @@ stages:
   - test
   - security
   - publish
-  - release
+  - tag
   - downstream

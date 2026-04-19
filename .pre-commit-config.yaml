@@ -21,24 +21,28 @@ repos:
         entry: bash -n
         language: system
         types: [shell]
+        stages: [pre-push]
 
   - repo: https://github.com/koalaman/shellcheck-precommit
     rev: v0.9.0
     hooks:
       - id: shellcheck
         args: ['-e', 'SC1091,SC2155,SC2086', '-S', 'error']
+        stages: [pre-push]
 
   - repo: https://github.com/adrienverge/yamllint
     rev: v1.33.0
     hooks:
       - id: yamllint
         args: ['-c', '.yamllint']
+        stages: [pre-push]
 
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.38.0
     hooks:
       - id: markdownlint
         args: ['--config', '.markdownlint.json', '--fix']
+        stages: [pre-push]
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.21.2
@@ -58,12 +62,11 @@ repos:
         always_run: true
         verbose: true
 
-  # Integration tests for CI/CD shell scripts (pre-push only)
   - repo: local
     hooks:
       - id: cicd-integration-tests
         name: CI/CD Integration Tests
-        entry: ./tests/cicd/test_ci_release_logic.sh
+        entry: ./tests/cicd/gitlab/test_suite.sh
         language: script
         stages: [pre-push]
         pass_filenames: false

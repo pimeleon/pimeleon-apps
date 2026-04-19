@@ -10,7 +10,7 @@ if [ -z "${GL_TOKEN:-}" ]; then
 fi
 
 echo "GITLAB_URL: ${GITLAB_URL:-not set}"
-echo "GL_TOKEN:   ${GL_TOKEN}"
+echo "GL_TOKEN:   ${GL_TOKEN:0:6}..."
 echo ""
 echo "Calculating next production version..."
 NEXT_VERSION=$(release --skip-ssl-verify next-version --allow-current)

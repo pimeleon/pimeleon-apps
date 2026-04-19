@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# Trigger the "build" GitHub Actions workflow via workflow_dispatch.
+# Triggers the "build" GitHub Actions workflow via workflow_dispatch.
 #
 # Inputs (CI environment):
 #   CI_COMMIT_REF_NAME

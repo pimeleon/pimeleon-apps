@@ -23,6 +23,8 @@ if [ -n "$NEXT_VERSION" ]; then
   if [ $RC -ne 0 ]; then
     if grep -q "no changes found" /tmp/release.log; then
       echo "No releasable changes - skipping tag"
+    elif grep -q "Release already exists" /tmp/release.log; then
+      echo "Release already exists - skipping"
     else
       exit 1
     fi

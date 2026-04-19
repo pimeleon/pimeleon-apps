@@ -51,7 +51,10 @@ tag:production:
     GITLAB_URL: "https://gitlab.pirouter.dev"
     GITLAB_TOKEN: $CI_PIMELEON_APPS_PUSH_TOKEN
   before_script:
+    - echo 'Acquire::http::Proxy "http://192.168.76.5:3142";' > /etc/apt/apt.conf.d/01proxy
     - apt-get update && apt-get install -y git ca-certificates
+    - npm config set proxy http://192.168.76.5:3142
+    - npm config set https-proxy http://192.168.76.5:3142
     - npm install -g semantic-release @semantic-release/gitlab @semantic-release/commit-analyzer @semantic-release/release-notes-generator
   script:
     - semantic-release --extends @semantic-release/gitlab

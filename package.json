@@ -1,0 +1,17 @@
+{
+  "name": "pi-router-apps",
+  "version": "0.0.0",
+  "description": "App Factory for Pimeleon ecosystem",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.pirouter.dev/pimeleon/pi-router-apps.git"
+  },
+  "release": {
+    "branches": ["master"],
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/gitlab"
+    ]
+  }
+}

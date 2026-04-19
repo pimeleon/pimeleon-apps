@@ -64,3 +64,15 @@ repos:
         pass_filenames: false
         always_run: true
         verbose: true
+
+  # Integration tests for CI/CD shell scripts (pre-push only)
+  - repo: local
+    hooks:
+      - id: cicd-integration-tests
+        name: CI/CD Integration Tests
+        entry: ./tests/cicd/test_ci_release_logic.sh
+        language: script
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true
+        verbose: true

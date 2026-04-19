@@ -65,8 +65,8 @@ repos:
   - repo: local
     hooks:
       - id: cicd-integration-tests
-        name: CI/CD Integration Tests
-        entry: ./tests/cicd/gitlab/test_suite.sh
+        name: CI/CD Integration Tests (Containerized)
+        entry: ./tests/cicd/gitlab/run_tests_in_container.sh
         language: script
         stages: [pre-push]
         pass_filenames: false

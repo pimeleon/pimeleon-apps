@@ -17,9 +17,8 @@ publish:gitlab:
     - job: security:scan-builder-arm64
   interruptible: true
   rules:
-    # PRODUCTION: Upload artifacts on push to master OR on MR targeting master
+    # PRODUCTION: Upload artifacts only after merge to master
     - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
   script:
     - apk add --no-cache curl bash
     - ./scripts/ci-publish-gitlab.sh

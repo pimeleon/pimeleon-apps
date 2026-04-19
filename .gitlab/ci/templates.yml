@@ -19,17 +19,17 @@
   rules:
     # 1. Always run on master (ensure production images are fresh/pushed)
     - if: '$CI_COMMIT_BRANCH == "master"'
-      when: always
+      changes: !reference [.builder_rebuild_globs, changes]
 
     # 2. On develop or other branches: Only run if builder sources actually changed
-    - if: '$CI_COMMIT_BRANCH == "develop"'
-      changes:
-        - Dockerfile.builder
-        - .env
-        - scripts/*
-        - Makefile
+    - if: '$CI_COMMIT_BRANCH == "develop" && $CI_PIPELINE_SOURCE == "push"'
+      changes: !reference [.builder_rebuild_globs, changes]
 
-    # 3. Always run on manual trigger from web/schedule
+    # 3. Run on MR to develop or master if builder sources changed (pre-merge gate)
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^(develop|master)$/'
+      changes: !reference [.builder_rebuild_globs, changes]
+
+    # 4. Always run on manual trigger from web/schedule
     - if: '$CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "schedule"'
   script:
     - apk add --no-cache bash curl

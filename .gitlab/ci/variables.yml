@@ -7,8 +7,19 @@ variables:
   GIT_DEPTH: 0
   DEFAULT_ARCH: "armhf"
 
-.common_file_globs:
-  changes: &common_globs
-    - "src/**/*"
-    - "scripts/**/*.sh"
-    - ".gitlab/ci/**/*"
+.builder_rebuild_globs:
+  changes:
+    - Dockerfile.builder
+    - .env
+    - scripts/**/*
+    - Makefile
+
+.app_rebuild_globs:
+  changes:
+    - Dockerfile.builder
+    - .dockerignore
+    - .env
+    - local-build.sh
+    - Makefile
+    - packages/**/*
+    - scripts/**/*

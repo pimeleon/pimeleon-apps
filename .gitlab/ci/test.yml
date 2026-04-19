@@ -18,4 +18,7 @@ build:smoke:
     - .gitlab/scripts/ci-smoke-test.sh
   rules:
     - if: '$CI_COMMIT_BRANCH == "develop" && $CI_PIPELINE_SOURCE == "push"'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: !reference [.builder_rebuild_globs, changes]
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
+      changes: !reference [.builder_rebuild_globs, changes]
+    - when: never

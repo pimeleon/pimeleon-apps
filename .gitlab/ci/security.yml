@@ -11,6 +11,7 @@
     TRIVY_NO_PROGRESS: "true"
     TRIVY_SEVERITY: "HIGH,CRITICAL"
     TRIVY_SCANNERS: "vuln,secret"
+    TRIVY_PKG_TYPES: "library"
     TRIVY_SKIP_DIRS: "/usr/local/go"
     TRIVY_SKIP_FILES: "go.sum"
   tags:

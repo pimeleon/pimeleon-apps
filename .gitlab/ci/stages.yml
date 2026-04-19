@@ -1,6 +1,7 @@
 ---
 # GitLab CI/CD — Stage Definitions
 stages:
+  - prepare
   - validate
   - build-builder
   - build-apps

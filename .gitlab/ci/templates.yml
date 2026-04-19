@@ -23,8 +23,8 @@
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^(develop|master)$/'
       changes: !reference [.builder_rebuild_globs, changes]
   script:
-    - export http_proxy=http://$APT_PROXY
-    - export https_proxy=http://$APT_PROXY
+    - export http_proxy=$APT_PROXY
+    - export https_proxy=$APT_PROXY
     - apk add --no-cache bash curl
     - chmod +x scripts/publish-builders.sh
     - ./scripts/publish-builders.sh $TARGET_ARCH

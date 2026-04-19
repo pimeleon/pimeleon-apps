@@ -30,7 +30,7 @@ publish:gitlab:
 # Generate production semver tag from conventional commits since last release
 tag:production:
   stage: tag
-  image: node:lts-slim
+  image: registry.gitlab.com/juhani/go-semrel-gitlab:v0.21.1
   tags:
     - linux
   cache: {}
@@ -48,16 +48,13 @@ tag:production:
       when: on_success
     - when: never
   variables:
-    GITLAB_URL: "https://gitlab.pirouter.dev"
-    GITLAB_TOKEN: $CI_PIMELEON_APPS_PUSH_TOKEN
-  before_script:
-    - if [ -n "$APT_PROXY" ]; then echo "Acquire::http::Proxy \"http://$APT_PROXY\";" > /etc/apt/apt.conf.d/01proxy; fi
-    - apt-get update && apt-get install -y git ca-certificates
-    - if [ -n "$APT_PROXY" ]; then npm config set proxy "http://$APT_PROXY"; fi
-    - if [ -n "$APT_PROXY" ]; then npm config set https-proxy "http://$APT_PROXY"; fi
-    - npm install -g semantic-release @semantic-release/gitlab @semantic-release/commit-analyzer @semantic-release/release-notes-generator
+    GIT_SSL_NO_VERIFY: "1"
+    GITLAB_URL: "https://gitlab.pirouter.dev/api/v4"
+    GSG_TOKEN: $CI_PIMELEON_APPS_PUSH_TOKEN
+    GSG_MINOR_COMMIT_TYPES: "feat,perf"
+    GSG_PATCH_COMMIT_TYPES: "fix"
   script:
-    - semantic-release --extends @semantic-release/gitlab
+    - .gitlab/scripts/ci-release.sh
 
 # Trigger GitHub Actions after a successful production release
 trigger:github:

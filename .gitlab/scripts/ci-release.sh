@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # shellcheck source=scripts/lib-logging.sh
+# Requires: GL_TOKEN, GITLAB_URL, CI_PROJECT_ID
 source scripts/lib-logging.sh
 
 if [ -z "${GL_TOKEN:-}" ]; then

@@ -8,6 +8,7 @@ security:gitleaks:
     name: ghcr.io/gitleaks/gitleaks:latest
     entrypoint: [""]
   allow_failure: false
+  needs: []
   tags:
     - linux
   script:
@@ -18,10 +19,10 @@ security:gitleaks:
     expire_in: 1 week
     when: on_success
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "push"'
-      when: always
     - if: '$CI_COMMIT_TAG'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: always
+    - if: '$CI_PIPELINE_SOURCE =~ /push|merge_request_event/'
+      when: always
 
 
 lint:shell:
@@ -29,27 +30,23 @@ lint:shell:
   image: alpine:latest
   tags:
     - linux
-  needs: []
-  interruptible: true
+  needs:
+    - job: "security:gitleaks"
   script:
     - .gitlab/scripts/ci-lint-shell.sh
   rules:
     - if: '$CI_COMMIT_TAG'
     - if: '$CI_PIPELINE_SOURCE == "push"'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - when: never
 
 lint:yaml:
   stage: validate
   image: alpine:latest
   tags:
     - linux
-  needs: []
-  interruptible: true
+  needs:
+    - job: "security:gitleaks"
   script:
     - .gitlab/scripts/ci-lint-yaml.sh
   rules:
     - if: '$CI_COMMIT_TAG'
     - if: '$CI_PIPELINE_SOURCE == "push"'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - when: never

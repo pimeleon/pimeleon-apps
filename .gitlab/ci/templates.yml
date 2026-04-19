@@ -10,9 +10,7 @@
     - containers
   needs:
     - job: "check:upstream-versions"
-      optional: true
     - job: "security:gitleaks"
-      optional: true
   variables:
     DOCKER_HOST: unix:///var/run/docker.sock
     GITLAB_DEPLOY_TOKEN: ${GITLAB_DEPLOY_TOKEN}

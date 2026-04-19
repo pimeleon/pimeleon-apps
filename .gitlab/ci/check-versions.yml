@@ -10,9 +10,7 @@ check:upstream-versions:
   needs: []
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^(develop|master)$/'
-      changes: !reference [.app_rebuild_globs, changes]
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^(develop|master)$/'
-      changes: !reference [.app_rebuild_globs, changes]
 
   script:
     - .gitlab/scripts/ci-check-versions.sh

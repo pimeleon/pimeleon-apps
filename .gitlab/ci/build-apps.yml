@@ -12,6 +12,8 @@ build:apps:
     matrix:
       - TARGET_ARCH: ["armhf", "arm64"]
   script:
+    - export http_proxy=$APT_PROXY
+    - export https_proxy=$APT_PROXY
     - apk add --no-cache bash curl
     - chmod +x local-build.sh
     - ./local-build.sh all $TARGET_ARCH

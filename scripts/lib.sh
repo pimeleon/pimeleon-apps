@@ -24,7 +24,7 @@ query_with_retry() {
 
     local out
     for attempt in 1 2; do
-        if out=$(curl "${curl_args[@]}" "$url" 2>/dev/null); then
+        if out=$(curl "${curl_args[@]}" "$url" 2>/dev/null | tr -d "\000"); then
             echo "$out"
             return 0
         fi

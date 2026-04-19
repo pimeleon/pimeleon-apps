@@ -33,8 +33,13 @@ grep -q "publish.env" scripts/ci-publish-gitlab.sh
 echo "[TEST] scripts/clean-docker.sh..."
 ./scripts/clean-docker.sh --help > /dev/null
 
-# 4. Test ci-release.sh logic
-echo "[TEST] .gitlab/scripts/ci-release.sh..."
+# 4. Test ci-release.sh prerequisites
+echo "[TEST] .gitlab/scripts/ci-release.sh prerequisites..."
+command -v curl > /dev/null || { echo "[-] curl not found — tag pipeline trigger will fail"; exit 1; }
+command -v bash > /dev/null || { echo "[-] bash not found"; exit 1; }
+
+# 5. Test ci-release.sh logic
+echo "[TEST] .gitlab/scripts/ci-release.sh logic..."
 release() { echo "0.1.5"; }
 export -f release
 LATEST_TAG="v0.1.5"

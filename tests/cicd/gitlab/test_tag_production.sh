@@ -151,3 +151,4 @@ release --skip-ssl-verify next-version --allow-current || true
 "
     ;;
 esac
+bad_func() { echo $(( 1 + 1 )); }

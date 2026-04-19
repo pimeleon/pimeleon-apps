@@ -70,12 +70,14 @@ for pkg in output/*-pimeleon.tar.gz; do
 done
 
 if [[ $PUBLISH_COUNT -eq 0 && $FAIL_COUNT -eq 0 ]]; then
-    log_error "No artifacts found in output/. Contents:"
+    log_warn "No artifacts found in output/ — nothing to publish"
     ls -lh output/ 2>/dev/null || log_warn "  output/ directory does not exist"
-    exit 1
+    echo "ARTIFACTS_PUBLISHED=false" > publish.env
+    exit 0
 fi
 
-log_error "Publish summary: ${PUBLISH_COUNT} uploaded, ${FAIL_COUNT} failed"
+log_info "Publish summary: ${PUBLISH_COUNT} uploaded, ${FAIL_COUNT} failed"
 if [[ $FAIL_COUNT -gt 0 ]]; then
     die "One or more uploads failed"
 fi
+echo "ARTIFACTS_PUBLISHED=true" > publish.env

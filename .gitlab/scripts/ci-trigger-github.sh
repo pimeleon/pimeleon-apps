@@ -1,5 +1,5 @@
-#!/bin/bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 # Triggers the "build" GitHub Actions workflow via workflow_dispatch.
 #
